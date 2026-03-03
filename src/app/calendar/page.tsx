@@ -6,10 +6,10 @@ import interactionPlugin from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import type {
   DateSelectArg,
+  EventApi,
   EventClickArg,
   EventDropArg,
   EventInput,
-  EventResizeDoneArg,
 } from "@fullcalendar/core";
 import FullCalendar from "@fullcalendar/react";
 
@@ -31,6 +31,11 @@ type EventFormState = {
 };
 
 const DEFAULT_COLOR = "#2563eb";
+
+type EventTimeChangeArg = {
+  event: EventApi;
+  revert: () => void;
+};
 
 function toDateTimeLocal(value?: string | Date | null): string {
   if (!value) return "";
@@ -234,9 +239,7 @@ export default function CalendarPage() {
     }
   };
 
-  const updateEventTime = async (
-    info: EventDropArg | EventResizeDoneArg,
-  ) => {
+  const updateEventTime = async (info: EventTimeChangeArg) => {
     const current = events.find((event) => event.id === info.event.id);
     if (!current || !info.event.start) return;
 
@@ -274,7 +277,7 @@ export default function CalendarPage() {
     await updateEventTime(info);
   };
 
-  const handleEventResize = async (info: EventResizeDoneArg) => {
+  const handleEventResize = async (info: EventTimeChangeArg) => {
     await updateEventTime(info);
   };
 
