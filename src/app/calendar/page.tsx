@@ -77,7 +77,13 @@ function toIso(value: string): string | null {
 function addHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
-
+function isSameLocalDate(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
 function getReadableTextColor(bgColor: string): string {
   const normalized = bgColor.trim();
   const color = normalized.startsWith("#") ? normalized.slice(1) : normalized;
