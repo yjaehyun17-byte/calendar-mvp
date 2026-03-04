@@ -36,10 +36,13 @@ type EventFormState = {
 };
 
 type CompanySearchResult = {
-  name: string;
   ticker: string;
-  market: string;
-  googleFinanceUrl: string;
+  name_kr: string;
+  market: string | null;
+};
+
+type CompaniesApiResponse = {
+  companies: CompanySearchResult[];
 };
 
 const DEFAULT_COLOR = "#2563eb";
@@ -357,8 +360,8 @@ export default function CalendarPage() {
             throw new Error("Failed to search companies");
           }
 
-          const data = (await response.json()) as CompanySearchResult[];
-          setCompanyResults(data.slice(0, 10));
+          const data = (await response.json()) as CompaniesApiResponse;
+          setCompanyResults((data.companies ?? []).slice(0, 10));
         } catch (error) {
           console.error(error);
           setCompanyResults([]);
@@ -376,12 +379,12 @@ export default function CalendarPage() {
   const handleSelectCompany = (company: CompanySearchResult) => {
     setForm((prev) => ({
       ...prev,
-      companyName: company.name,
+      companyName: company.name_kr,
       companyTicker: company.ticker,
-      companyMarket: company.market,
-      companyFinanceUrl: company.googleFinanceUrl,
+      companyMarket: company.market ?? "KRX",
+      companyFinanceUrl: `https://www.google.com/finance/quote/${company.ticker}:KRX`,
     }));
-    setCompanyQuery(company.name);
+    setCompanyQuery(company.name_kr);
     setCompanyResults([]);
   };
 
@@ -670,7 +673,17 @@ export default function CalendarPage() {
                 className="calendar-modal-input"
                 type="text"
                 value={companyQuery}
-                onChange={(e) => setCompanyQuery(e.target.value)}
+                onChange={(e) => {
+                  const nextQuery = e.target.value;
+                  setCompanyQuery(nextQuery);
+                  setForm((prev) => ({
+                    ...prev,
+                    companyName: "",
+                    companyTicker: "",
+                    companyMarket: "",
+                    companyFinanceUrl: "",
+                  }));
+                }}
                 placeholder="예: 삼성전자, 카카오"
                 style={{ width: "100%", padding: "8px", marginTop: "4px" }}
               />
@@ -702,10 +715,18 @@ export default function CalendarPage() {
                       borderBottom: "1px solid #e5e7eb",
                     }}
                   >
-                    {company.name} ({company.ticker}, {company.market})
+                    {company.name_kr} ({company.ticker}, {company.market ?? "KRX"})
                   </button>
                 ))}
               </div>
+            ) : null}
+
+            {!isCompanyLoading &&
+            companyQuery.trim().length >= 2 &&
+            companyResults.length === 0 ? (
+              <p style={{ margin: 0, color: "#6b7280", fontSize: "13px" }}>
+                검색 결과가 없습니다. 회사명을 더 정확히 입력해 주세요.
+              </p>
             ) : null}
 
             <label className="calendar-modal-label">
