@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { loadCompanyMaster, searchCompanyMaster } from "@/lib/companyMaster";
 
-type NormalizedCompany = {
+type CompanyResult = {
   name: string;
   ticker: string;
   market: "KOSPI" | "KOSDAQ" | "KRX";
   googleFinanceUrl: string;
+  source: "master" | "google_finance";
 };
 
 type LooseGoogleFinanceMatchItem = Record<string, unknown>;
@@ -15,10 +17,10 @@ type LooseGoogleFinanceMatchResponse = {
 
 const SUPPORTED_MARKETS = new Set(["KRX", "KOSPI", "KOSDAQ"]);
 
-function normalizeMarket(value: string): NormalizedCompany["market"] | null {
+function normalizeMarket(value: string): CompanyResult["market"] | null {
   const normalized = value.toUpperCase();
   if (!SUPPORTED_MARKETS.has(normalized)) return null;
-  return normalized as NormalizedCompany["market"];
+  return normalized as CompanyResult["market"];
 }
 
 function buildGoogleFinanceUrl(ticker: string) {
@@ -48,36 +50,28 @@ function parseMatchPayload(payload: string): LooseGoogleFinanceMatchResponse | n
   }
 }
 
-function normalizeMatch(item: LooseGoogleFinanceMatchItem): NormalizedCompany | null {
-  const ticker = pickString(item.t, item.ticker, item.symbol);
+function normalizeGoogleMatch(item: LooseGoogleFinanceMatchItem): CompanyResult | null {
+  const ticker = pickString(item.t, item.ticker, item.symbol)?.replace(/\D/g, "");
   const name = pickString(item.n, item.name, item.companyName);
   const marketRaw = pickString(item.e, item.exchange, item.market);
 
-  if (!ticker || !name || !marketRaw) {
+  if (!ticker || ticker.length !== 6 || !name || !marketRaw) {
     return null;
   }
 
   const market = normalizeMarket(marketRaw);
-  if (!market) {
-    return null;
-  }
+  if (!market) return null;
 
   return {
     name,
     ticker,
     market,
     googleFinanceUrl: buildGoogleFinanceUrl(ticker),
+    source: "google_finance",
   };
 }
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.get("query")?.trim();
-
-  if (!query || query.length < 2) {
-    return NextResponse.json([]);
-  }
-
+async function fetchGoogleFinanceMatches(query: string): Promise<CompanyResult[]> {
   try {
     const response = await fetch(
       `https://www.google.com/finance/match?matchtype=matchall&q=${encodeURIComponent(query)}`,
@@ -93,25 +87,45 @@ export async function GET(request: Request) {
       },
     );
 
-    if (!response.ok) {
-      return NextResponse.json([]);
-    }
+    if (!response.ok) return [];
 
     const rawBody = await response.text();
     const parsed = parseMatchPayload(rawBody);
     const matches = parsed?.matches ?? [];
 
-    const results = matches
-      .map((item) => normalizeMatch(item))
-      .filter((item): item is NormalizedCompany => item !== null)
+    return matches
+      .map((item) => normalizeGoogleMatch(item))
+      .filter((item): item is CompanyResult => item !== null)
       .filter(
         (item, index, array) =>
           array.findIndex((candidate) => candidate.ticker === item.ticker) === index,
       )
       .slice(0, 20);
-
-    return NextResponse.json(results);
   } catch {
+    return [];
+  }
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get("query")?.trim();
+
+  if (!query || query.length < 2) {
     return NextResponse.json([]);
   }
+
+  const masterCompanies = searchCompanyMaster(await loadCompanyMaster(), query).map(
+    (company) => ({
+      ...company,
+      googleFinanceUrl: buildGoogleFinanceUrl(company.ticker),
+      source: "master" as const,
+    }),
+  );
+
+  if (masterCompanies.length > 0) {
+    return NextResponse.json(masterCompanies);
+  }
+
+  const googleMatches = await fetchGoogleFinanceMatches(query);
+  return NextResponse.json(googleMatches);
 }

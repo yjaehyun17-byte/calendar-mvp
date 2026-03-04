@@ -24,3 +24,25 @@ npm run dev
 ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000) 접속 후 Google 로그인 버튼으로 인증할 수 있습니다.
+
+## 상장사 마스터 자동화 (웹 데이터 기반)
+
+기업 검색의 안정성을 위해 `data/krx-master.json` 파일을 우선 사용하고, 파일에 데이터가 없으면 Google Finance 검색으로 폴백합니다.
+
+### 1) 상장사 마스터 동기화
+
+아래처럼 웹에서 내려받을 수 있는 CSV/JSON URL을 환경변수로 지정해 동기화할 수 있습니다.
+
+```bash
+KRX_MASTER_SOURCE_URL='https://<your-web-source>.csv-or-json' npm run sync:companies
+```
+
+- CSV일 경우 아래 컬럼명 중 일부를 포함하면 자동 매핑합니다.
+  - 회사명: `name`, `company_name`, `종목명`, `회사명`
+  - 종목코드: `ticker`, `code`, `stock_code`, `단축코드`, `종목코드`
+  - 시장구분: `market`, `시장구분`, `market_type`, `시장`
+- JSON일 경우 `{ name, ticker, market }` 형태 배열을 권장합니다.
+
+### 2) 운영 자동화
+
+서버/배치에서 하루 1회 `npm run sync:companies` 실행(크론)으로 상장사 DB를 자동 갱신할 수 있습니다.

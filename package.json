@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:companies": "node scripts/sync-company-master.mjs"
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.20",
