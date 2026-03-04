@@ -77,7 +77,29 @@ function getGoogleAuthHint(errorMessage: string): string {
   return "Supabase 인증 설정(Provider 활성화, Client ID/Secret, Redirect URL)을 확인해 주세요.";
 }
 
+function getDisplayName(user: User | null): string {
+  if (!user) return "";
+
+  const metadata = user.user_metadata as {
+    name?: string;
+    full_name?: string;
+    given_name?: string;
+    family_name?: string;
+    preferred_username?: string;
+  };
+
+  return (
+    metadata?.name ||
+    metadata?.full_name ||
+    [metadata?.given_name, metadata?.family_name].filter(Boolean).join(" ") ||
+    metadata?.preferred_username ||
+    user.email ||
+    "Google 사용자"
+  );
+}
+
 export default function CalendarPage() {
+
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -471,7 +493,7 @@ export default function CalendarPage() {
           }}
         >
           <p style={{ margin: 0, color: "#374151" }}>
-            로그인됨: <strong>{user.email ?? "Google 사용자"}</strong>
+            로그인됨: <strong>{getDisplayName(user)}</strong>
           </p>
           <button
             type="button"
