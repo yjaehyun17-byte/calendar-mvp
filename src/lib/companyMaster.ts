@@ -59,6 +59,7 @@ export function searchCompanyMaster(
   query: string,
 ): CompanyMasterItem[] {
   const keyword = query.trim().toLowerCase();
+  const compactKeyword = keyword.replace(/\s+/g, "");
 
   if (keyword.length < 2) {
     return [];
@@ -66,8 +67,12 @@ export function searchCompanyMaster(
 
   return companies
     .filter((company) => {
+      const normalizedName = company.name.toLowerCase();
+      const compactName = normalizedName.replace(/\s+/g, "");
+
       return (
-        company.name.toLowerCase().includes(keyword) ||
+        normalizedName.includes(keyword) ||
+        compactName.includes(compactKeyword) ||
         company.ticker.includes(keyword)
       );
     })
