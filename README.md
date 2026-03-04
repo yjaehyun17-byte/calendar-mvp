@@ -46,3 +46,15 @@ KRX_MASTER_SOURCE_URL='https://<your-web-source>.csv-or-json' npm run sync:compa
 ### 2) 운영 자동화
 
 서버/배치에서 하루 1회 `npm run sync:companies` 실행(크론)으로 상장사 DB를 자동 갱신할 수 있습니다.
+
+
+### 3) data.go.kr OpenAPI 방식 (권장)
+
+아래처럼 data.go.kr API URL과 서비스 키를 주면 페이지네이션으로 자동 수집합니다.
+
+```bash
+DATA_GO_KR_API_URL='https://apis.data.go.kr/<path>' DATA_GO_KR_SERVICE_KEY='<service_key>' DATA_GO_KR_PAGE_SIZE=500 DATA_GO_KR_MAX_PAGES=20 npm run sync:companies
+```
+
+- 스크립트는 OpenAPI에서 자주 쓰이는 키(`itmsNm`, `srtnCd`, `mrktCtg`)를 자동 인식합니다.
+- `KRX_MASTER_SOURCE_URL`이 지정되면 해당 URL 우선, 없으면 data.go.kr 설정을 사용합니다.
