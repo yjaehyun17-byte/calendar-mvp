@@ -12,6 +12,8 @@ import type {
   EventInput,
 } from "@fullcalendar/core";
 import FullCalendar from "@fullcalendar/react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
 
 type CalendarEvent = {
   id: string;
@@ -86,6 +88,8 @@ function getReadableTextColor(hexColor: string): "#111827" | "#ffffff" {
 }
 
 export default function CalendarPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -143,7 +147,50 @@ export default function CalendarPage() {
   };
 
   useEffect(() => {
+    const syncAuth = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error(error);
+        }
+
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error(error);
+        setUser(null);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    void syncAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setIsAuthLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setEvents([]);
+      setIsLoading(false);
+      return;
+    }
+
     const run = async () => {
+      setIsLoading(true);
+
       try {
         await loadEvents();
       } catch (error) {
@@ -154,7 +201,29 @@ export default function CalendarPage() {
     };
 
     void run();
-  }, []);
+  }, [user]);
+
+  const signInWithGoogle = async () => {
+    const redirectTo = `${window.location.origin}/calendar`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+
+    if (error) {
+      console.error(error);
+      alert("Google 로그인에 실패했습니다.");
+    }
+  };
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error(error);
+      alert("로그아웃에 실패했습니다.");
+    }
+  };
 
   const openCreateModal = (start: Date, end?: Date) => {
     setEditingId(null);
@@ -311,6 +380,78 @@ export default function CalendarPage() {
       <h1 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "16px" }}>
         Calendar
       </h1>
+
+      {isAuthLoading ? <p>로그인 상태를 확인하는 중...</p> : null}
+
+      {!user ? (
+        <section
+          style={{
+            maxWidth: "420px",
+            border: "1px solid #d1d5db",
+            borderRadius: "12px",
+            padding: "16px",
+            display: "grid",
+            gap: "12px",
+            background: "#fff",
+            color: "#111827",
+          }}
+        >
+          <h2 style={{ fontSize: "20px", fontWeight: 700, margin: 0 }}>
+            Google 계정으로 로그인
+          </h2>
+          <p style={{ margin: 0 }}>
+            일정을 보거나 수정하려면 먼저 로그인해 주세요.
+          </p>
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            style={{
+              border: "1px solid #2563eb",
+              background: "#2563eb",
+              color: "#fff",
+              borderRadius: "8px",
+              padding: "10px 14px",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Google로 로그인
+          </button>
+        </section>
+      ) : null}
+
+      {user ? (
+        <div
+          style={{
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <p style={{ margin: 0, color: "#374151" }}>
+            로그인됨: <strong>{user.email ?? "Google 사용자"}</strong>
+          </p>
+          <button
+            type="button"
+            onClick={signOut}
+            style={{
+              border: "1px solid #d1d5db",
+              background: "#fff",
+              borderRadius: "8px",
+              padding: "8px 12px",
+              cursor: "pointer",
+            }}
+          >
+            로그아웃
+          </button>
+        </div>
+      ) : null}
+
+      {!user ? null : (
+        <>
 
       {isLoading ? <p>불러오는 중...</p> : null}
 
@@ -504,6 +645,8 @@ export default function CalendarPage() {
           </div>
         </div>
       ) : null}
+        </>
+      )}
     </main>
   );
 }

@@ -1,36 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Calendar MVP
+
+Supabase 기반 일정 관리 MVP입니다. 이제 Google OAuth 로그인 후 일정을 확인/수정할 수 있습니다.
 
 ## Getting Started
 
-First, run the development server:
+1. `.env.local` 파일을 만들고 아래 환경 변수를 설정하세요.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Supabase 대시보드에서 **Authentication > Providers > Google** 를 활성화하세요.
+3. Google Cloud Console OAuth 클라이언트의 승인된 Redirect URI에 아래 주소를 추가하세요.
+   - `https://<YOUR_SUPABASE_PROJECT_REF>.supabase.co/auth/v1/callback`
+4. Supabase **Authentication > URL Configuration** 에 사이트 URL(예: `http://localhost:3000`)을 등록하세요.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+그다음 개발 서버를 실행합니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+브라우저에서 [http://localhost:3000](http://localhost:3000) 접속 후 Google 로그인 버튼으로 인증할 수 있습니다.
