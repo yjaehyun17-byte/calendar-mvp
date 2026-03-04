@@ -2,13 +2,38 @@
 
 Supabase 기반 일정 관리 MVP입니다. Google OAuth 로그인 후 일정을 확인/수정할 수 있습니다.
 
-## Getting Started
+## Router / API 구조
 
-1. `.env.local` 파일을 만들고 아래 환경 변수를 설정하세요.
+이 프로젝트는 **Next.js App Router(`src/app`)** 구조이며, API는 Route Handler(`src/app/api/**/route.ts`)로 구현되어 있습니다.
+
+- 회사 검색 API: `GET /api/companies?query=삼성` (또는 `q`)
+- 상장사 동기화 API: `GET /api/sync-companies`
+
+## 1) Supabase 테이블 생성
+
+아래 SQL 파일을 Supabase SQL Editor에서 먼저 실행하세요.
+
+- `docs/sql/companies_krx.sql`
+
+생성 테이블:
+- `companies_krx(ticker PK, name_kr, market, isin, corp_name, base_date, updated_at)`
+- `name_kr` 인덱스 + `pg_trgm` GIN 인덱스
+
+> 참고: 동기화 upsert는 **service role key**를 사용하므로 서버에서 RLS 우회가 가능합니다.
+
+## 2) 환경변수 설정
+
+### 로컬 `.env.local`
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+
+DATA_GO_KR_SERVICE_KEY=...
+DATA_GO_KR_KRX_LISTED_ENDPOINT=https://apis.data.go.kr/...
+
+CRON_SECRET=very-strong-secret
 ```
 
 2. Supabase 대시보드에서 **Authentication > Providers > Google** 를 활성화하고, Google Cloud에서 발급한 **Client ID / Client Secret** 을 저장하세요.
@@ -18,7 +43,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    - Site URL: `http://localhost:3000` (로컬) / 실제 배포 URL
    - Redirect URLs: `http://localhost:3000/calendar`, `https://<your-domain>/calendar`
 
-그다음 개발 서버를 실행합니다.
+## 7) 개발 실행
 
 ```bash
 npm install

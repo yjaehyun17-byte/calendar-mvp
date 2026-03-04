@@ -1,54 +1,46 @@
 import { NextResponse } from "next/server";
+import { getServerSupabaseClient } from "@/lib/serverSupabase";
 
-type GoogleFinanceMatchItem = {
-  e?: string;
-  n?: string;
-  t?: string;
+type CompanyRow = {
+  ticker: string;
+  name_kr: string;
+  market: string | null;
 };
-
-type GoogleFinanceMatchResponse = {
-  matches?: GoogleFinanceMatchItem[];
-};
-
-function buildGoogleFinanceUrl(ticker: string) {
-  return `https://www.google.com/finance/quote/${ticker}:KRX`;
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get("query")?.trim();
+  const query =
+    searchParams.get("query")?.trim() || searchParams.get("q")?.trim() || "";
 
-  if (!query) {
-    return NextResponse.json([]);
+  if (query.length < 2) {
+    return NextResponse.json({ companies: [] });
   }
 
-  try {
-    const response = await fetch(
-      `https://www.google.com/finance/match?matchtype=matchall&q=${encodeURIComponent(query)}`,
+  const supabase = getServerSupabaseClient();
+  if (!supabase) {
+    return NextResponse.json(
       {
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-        },
-        cache: "no-store",
+        ok: false,
+        error:
+          "Supabase server env is missing. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
       },
+      { status: 500 },
     );
-
-    if (!response.ok) {
-      return NextResponse.json([], { status: 200 });
-    }
-
-    const payload = (await response.json()) as GoogleFinanceMatchResponse;
-    const results = (payload.matches ?? [])
-      .filter((item) => item.e === "KRX" && item.n && item.t)
-      .map((item) => ({
-        name: item.n as string,
-        ticker: item.t as string,
-        market: "KRX",
-        googleFinanceUrl: buildGoogleFinanceUrl(item.t as string),
-      }));
-
-    return NextResponse.json(results);
-  } catch {
-    return NextResponse.json([]);
   }
+
+  const { data, error } = await supabase
+    .from("companies_krx")
+    .select("ticker,name_kr,market")
+    .ilike("name_kr", `%${query}%`)
+    .order("name_kr", { ascending: true })
+    .limit(20);
+
+  if (error) {
+    return NextResponse.json(
+      { ok: false, error: "Failed to search companies", detail: error.message },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ companies: (data ?? []) as CompanyRow[] });
 }
