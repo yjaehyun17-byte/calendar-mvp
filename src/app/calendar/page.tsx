@@ -148,10 +148,29 @@ export default function CalendarPage() {
     if (!user) return "Google 사용자";
 
     const metadata = user.user_metadata as Record<string, unknown> | undefined;
+    const identities = Array.isArray(user.identities)
+      ? (user.identities as Array<{
+          identity_data?: Record<string, unknown> | null;
+        }>)
+      : [];
+    const identityData = identities
+      .map((identity) => identity.identity_data)
+      .filter(
+        (value): value is Record<string, unknown> =>
+          Boolean(value) && typeof value === "object",
+      );
+
     const candidateNames = [
       metadata?.name,
       metadata?.full_name,
       metadata?.preferred_username,
+      ...identityData.flatMap((identity) => [
+        identity.name,
+        identity.full_name,
+        identity.given_name,
+        identity.nickname,
+        identity.preferred_username,
+      ]),
       user.email,
     ];
 
@@ -260,7 +279,10 @@ export default function CalendarPage() {
     const redirectTo = `${window.location.origin}/calendar`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        scopes: "openid email profile",
+      },
     });
 
     if (error) {
