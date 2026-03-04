@@ -25,11 +25,21 @@ type CalendarEvent = {
 };
 
 type EventFormState = {
-  title: string;
+  companyName: string;
+  companyTicker: string;
+  companyMarket: string;
+  companyFinanceUrl: string;
   start: string;
   end: string;
   notes: string;
   color: string;
+};
+
+type CompanySearchResult = {
+  name: string;
+  ticker: string;
+  market: string;
+  googleFinanceUrl: string;
 };
 
 const DEFAULT_COLOR = "#2563eb";
@@ -103,12 +113,20 @@ export default function CalendarPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState<EventFormState>({
-    title: "",
+    companyName: "",
+    companyTicker: "",
+    companyMarket: "",
+    companyFinanceUrl: "",
     start: "",
     end: "",
     notes: "",
     color: DEFAULT_COLOR,
   });
+  const [companyQuery, setCompanyQuery] = useState("");
+  const [companyResults, setCompanyResults] = useState<CompanySearchResult[]>(
+    [],
+  );
+  const [isCompanyLoading, setIsCompanyLoading] = useState(false);
 
   const calendarEvents = useMemo<EventInput[]>(() => {
     return events.map((event) => ({
@@ -144,13 +162,18 @@ export default function CalendarPage() {
 
   const resetForm = () => {
     setForm({
-      title: "",
+      companyName: "",
+      companyTicker: "",
+      companyMarket: "",
+      companyFinanceUrl: "",
       start: "",
       end: "",
       notes: "",
       color: DEFAULT_COLOR,
     });
     setEditingId(null);
+    setCompanyQuery("");
+    setCompanyResults([]);
   };
 
   const closeModal = () => {
@@ -270,7 +293,10 @@ export default function CalendarPage() {
 
     setEditingId(null);
     setForm({
-      title: "",
+      companyName: "",
+      companyTicker: "",
+      companyMarket: "",
+      companyFinanceUrl: "",
       start: toDateTimeLocal(suggestedStart),
       end: toDateTimeLocal(end ?? addHours(suggestedStart, 1)),
       notes: "",
@@ -284,14 +310,79 @@ export default function CalendarPage() {
     if (!target) return;
 
     setEditingId(target.id);
+    const companyMatch =
+      target.title.match(/^기업 탐방\s*-\s*(.+)\s*\((\d+)\.KRX\)$/) ?? null;
+    const companyName = companyMatch?.[1] ?? "";
+    const companyTicker = companyMatch?.[2] ?? "";
+
     setForm({
-      title: target.title,
+      companyName,
+      companyTicker,
+      companyMarket: companyTicker ? "KRX" : "",
+      companyFinanceUrl: companyTicker
+        ? `https://www.google.com/finance/quote/${companyTicker}:KRX`
+        : "",
       start: toDateTimeLocal(target.start),
       end: toDateTimeLocal(target.end),
       notes: target.notes,
       color: target.color || DEFAULT_COLOR,
     });
+    setCompanyQuery(companyName);
     setIsModalOpen(true);
+  };
+
+  useEffect(() => {
+    const trimmedQuery = companyQuery.trim();
+
+    if (trimmedQuery.length < 2) {
+      setCompanyResults([]);
+      setIsCompanyLoading(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const run = async () => {
+        setIsCompanyLoading(true);
+
+        try {
+          const response = await fetch(
+            `/api/companies?query=${encodeURIComponent(trimmedQuery)}`,
+            {
+              method: "GET",
+              cache: "no-store",
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to search companies");
+          }
+
+          const data = (await response.json()) as CompanySearchResult[];
+          setCompanyResults(data.slice(0, 10));
+        } catch (error) {
+          console.error(error);
+          setCompanyResults([]);
+        } finally {
+          setIsCompanyLoading(false);
+        }
+      };
+
+      void run();
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [companyQuery]);
+
+  const handleSelectCompany = (company: CompanySearchResult) => {
+    setForm((prev) => ({
+      ...prev,
+      companyName: company.name,
+      companyTicker: company.ticker,
+      companyMarket: company.market,
+      companyFinanceUrl: company.googleFinanceUrl,
+    }));
+    setCompanyQuery(company.name);
+    setCompanyResults([]);
   };
 
   const handleDateClick = (info: { date: Date }) => {
@@ -308,17 +399,28 @@ export default function CalendarPage() {
   };
 
   const handleSave = async () => {
-    const trimmedTitle = form.title.trim();
+    const trimmedCompanyName = form.companyName.trim();
+    const trimmedCompanyTicker = form.companyTicker.trim();
     const startIso = toIso(form.start);
     const endIso = form.end ? toIso(form.end) : null;
 
-    if (!trimmedTitle || !startIso) return;
+    if (!trimmedCompanyName || !trimmedCompanyTicker || !startIso) return;
+
+    const generatedTitle = `기업 탐방 - ${trimmedCompanyName} (${trimmedCompanyTicker}.KRX)`;
+    const generatedNotes = [
+      form.companyFinanceUrl
+        ? `Google Finance: ${form.companyFinanceUrl}`
+        : undefined,
+      form.notes.trim(),
+    ]
+      .filter((value): value is string => Boolean(value && value.trim()))
+      .join("\n");
 
     const payload = {
-      title: trimmedTitle,
+      title: generatedTitle,
       start: startIso,
       end: endIso,
-      notes: form.notes.trim(),
+      notes: generatedNotes,
       color: form.color || DEFAULT_COLOR,
     };
 
@@ -415,7 +517,8 @@ export default function CalendarPage() {
     await updateEventTime(info);
   };
 
-  const isSaveDisabled = !form.title.trim() || !form.start;
+  const isSaveDisabled =
+    !form.companyName.trim() || !form.companyTicker.trim() || !form.start;
 
   return (
     <main className="calendar-page" style={{ padding: "24px" }}>
@@ -558,22 +661,74 @@ export default function CalendarPage() {
               className="calendar-modal-title"
               style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}
             >
-              {editingId ? "이벤트 수정" : "이벤트 추가"}
+              {editingId ? "기업 탐방 일정 수정" : "기업 탐방 일정 추가"}
             </h2>
 
             <label className="calendar-modal-label">
-              제목 *
+              상장사 검색 (KOSPI/KOSDAQ) *
               <input
                 className="calendar-modal-input"
                 type="text"
-                value={form.title}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, title: e.target.value }))
-                }
-                placeholder="일정 제목"
+                value={companyQuery}
+                onChange={(e) => setCompanyQuery(e.target.value)}
+                placeholder="예: 삼성전자, 카카오"
                 style={{ width: "100%", padding: "8px", marginTop: "4px" }}
               />
             </label>
+
+            {isCompanyLoading ? <p style={{ margin: 0 }}>기업 검색 중...</p> : null}
+
+            {companyResults.length > 0 ? (
+              <div
+                style={{
+                  border: "1px solid #d1d5db",
+                  borderRadius: "8px",
+                  maxHeight: "160px",
+                  overflowY: "auto",
+                }}
+              >
+                {companyResults.map((company) => (
+                  <button
+                    key={`${company.market}-${company.ticker}`}
+                    type="button"
+                    onClick={() => handleSelectCompany(company)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      border: "none",
+                      background: "#fff",
+                      padding: "8px 10px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid #e5e7eb",
+                    }}
+                  >
+                    {company.name} ({company.ticker}, {company.market})
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <label className="calendar-modal-label">
+              선택된 기업
+              <input
+                className="calendar-modal-input"
+                type="text"
+                value={
+                  form.companyName && form.companyTicker
+                    ? `${form.companyName} (${form.companyTicker}, ${form.companyMarket})`
+                    : ""
+                }
+                readOnly
+                placeholder="기업을 검색해서 선택해 주세요"
+                style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+              />
+            </label>
+
+            {form.companyFinanceUrl ? (
+              <p style={{ margin: 0, color: "#1d4ed8", fontSize: "13px" }}>
+                Google Finance: {form.companyFinanceUrl}
+              </p>
+            ) : null}
 
             <label className="calendar-modal-label">
               시작
