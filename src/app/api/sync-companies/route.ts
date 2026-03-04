@@ -59,20 +59,6 @@ function parseItems(payload: unknown): Record<string, unknown>[] {
   return [];
 }
 
-function parseTotalCount(payload: unknown): number | null {
-  if (!payload || typeof payload !== "object") return null;
-  const asRecord = payload as Record<string, unknown>;
-  const response = asRecord.response as Record<string, unknown> | undefined;
-  const body = response?.body as Record<string, unknown> | undefined;
-  const totalCount = body?.totalCount;
-  if (typeof totalCount === "number") return totalCount;
-  if (typeof totalCount === "string") {
-    const parsed = Number(totalCount);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
 function normalizeRow(row: Record<string, unknown>): ListedCompany | null {
   const ticker = normalizeTicker(
     row.srtnCd ?? row.srtncd ?? row.stck_shrn_iscd ?? row.ticker ?? row.code,
@@ -109,12 +95,19 @@ function isAuthorized(request: Request): boolean {
   return searchParams.get("token") === secret;
 }
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
+function parsePage(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return Math.floor(value);
   }
-  return chunks;
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return Math.floor(parsed);
+    }
+  }
+
+  return 0;
 }
 
 export async function GET(request: Request) {
@@ -138,62 +131,68 @@ export async function GET(request: Request) {
     );
   }
 
-  const numOfRows = 500;
-  const fetchedRows: ListedCompany[] = [];
-  let totalCount: number | null = null;
+  const { data: syncState, error: syncStateError } = await supabase
+    .from("sync_state")
+    .select("value")
+    .eq("key", "krx_page")
+    .maybeSingle();
 
-  for (let pageNo = 1; pageNo <= 100; pageNo += 1) {
-    const url = new URL(endpoint);
-    url.searchParams.set("serviceKey", serviceKey);
-    url.searchParams.set("numOfRows", String(numOfRows));
-    url.searchParams.set("pageNo", String(pageNo));
-    url.searchParams.set("resultType", "json");
-
-    const response = await fetch(url.toString(), { cache: "no-store" });
-
-    if (!response.ok) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Failed to fetch data.go.kr",
-          detail: `status=${response.status}`,
-        },
-        { status: 500 },
-      );
-    }
-
-    const json = (await response.json()) as unknown;
-    const rows = parseItems(json).map((row) => normalizeRow(row)).filter(Boolean) as ListedCompany[];
-    fetchedRows.push(...rows);
-
-    if (totalCount === null) {
-      totalCount = parseTotalCount(json);
-    }
-
-    if (rows.length === 0) break;
-    if (totalCount !== null && fetchedRows.length >= totalCount) break;
-    if (rows.length < numOfRows) break;
+  if (syncStateError) {
+    return NextResponse.json(
+      { ok: false, error: "Failed to read sync state", detail: syncStateError.message },
+      { status: 500 },
+    );
   }
 
-  const deduped = Array.from(
-    new Map(fetchedRows.map((row) => [row.ticker, row])).values(),
-  );
+  const currentPage = parsePage(syncState?.value);
+  const nextPage = currentPage + 1;
 
-  let upserted = 0;
-  for (const batch of chunk(deduped, 1000)) {
-    const { error } = await supabase
+  const url = new URL(endpoint);
+  url.searchParams.set("serviceKey", serviceKey);
+  url.searchParams.set("numOfRows", "200");
+  url.searchParams.set("pageNo", String(nextPage));
+  url.searchParams.set("resultType", "json");
+
+  const response = await fetch(url.toString(), { cache: "no-store" });
+
+  if (!response.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Failed to fetch data.go.kr",
+        detail: `status=${response.status}`,
+      },
+      { status: 500 },
+    );
+  }
+
+  const json = (await response.json()) as unknown;
+  const rows = parseItems(json).map((row) => normalizeRow(row)).filter(Boolean) as ListedCompany[];
+
+  if (rows.length > 0) {
+    const { error: upsertError } = await supabase
       .from("companies_krx")
-      .upsert(batch, { onConflict: "ticker" });
+      .upsert(rows, { onConflict: "ticker" });
 
-    if (error) {
+    if (upsertError) {
       return NextResponse.json(
-        { ok: false, error: "Failed to upsert companies", detail: error.message },
+        { ok: false, error: "Failed to upsert companies", detail: upsertError.message },
         { status: 500 },
       );
     }
-
-    upserted += batch.length;
   }
 
-  return NextResponse.json({ ok: true, fetched: deduped.length, upserted });
+  const { error: syncStateUpdateError } = await supabase
+    .from("sync_state")
+    .update({ value: nextPage })
+    .eq("key", "krx_page");
+
+  if (syncStateUpdateError) {
+    return NextResponse.json(
+      { ok: false, error: "Failed to update sync state", detail: syncStateUpdateError.message },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ ok: true, page: nextPage, inserted: rows.length });
 }
