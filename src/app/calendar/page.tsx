@@ -78,12 +78,26 @@ function addHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
-function getReadableTextColor(bgColor: string) {
-  const color = bgColor.replace("#", "");
-  const r = parseInt(color.substring(0, 2), 16);
-  const g = parseInt(color.substring(2, 4), 16);
-  const b = parseInt(color.substring(4, 6), 16);
+function getReadableTextColor(bgColor: string): string {
+  const normalized = bgColor.trim();
+  const color = normalized.startsWith("#") ? normalized.slice(1) : normalized;
+  const expanded =
+    color.length === 3
+      ? color
+          .split("")
+          .map((value) => value + value)
+          .join("")
+      : color;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(expanded)) {
+    return "#ffffff";
+  }
+
+  const r = Number.parseInt(expanded.substring(0, 2), 16);
+  const g = Number.parseInt(expanded.substring(2, 4), 16);
+  const b = Number.parseInt(expanded.substring(4, 6), 16);
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
   return brightness > 128 ? "#000000" : "#ffffff";
 }
 
