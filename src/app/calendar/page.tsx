@@ -63,6 +63,28 @@ function addHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
+function getReadableTextColor(hexColor: string): "#111827" | "#ffffff" {
+  const hex = hexColor.replace("#", "").trim();
+  const normalized =
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : hex;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+    return "#ffffff";
+  }
+
+  const red = parseInt(normalized.slice(0, 2), 16);
+  const green = parseInt(normalized.slice(2, 4), 16);
+  const blue = parseInt(normalized.slice(4, 6), 16);
+  const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+
+  return brightness >= 150 ? "#111827" : "#ffffff";
+}
+
 export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -84,6 +106,7 @@ export default function CalendarPage() {
       end: event.end ?? undefined,
       backgroundColor: event.color,
       borderColor: event.color,
+      textColor: getReadableTextColor(event.color || DEFAULT_COLOR),
       extendedProps: { notes: event.notes },
     }));
   }, [events]);

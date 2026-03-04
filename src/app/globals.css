@@ -26,17 +26,34 @@ body {
 }
 
 .calendar-page .fc {
-  --fc-event-text-color: #fff;
-}
-
-.calendar-page .fc .fc-event-main,
-.calendar-page .fc .fc-event-title,
-.calendar-page .fc .fc-event-time {
-  color: #fff !important;
+  --fc-border-color: #d1d5db;
+  --fc-page-bg-color: transparent;
+  color: var(--foreground);
 }
 
 .calendar-page .fc .fc-daygrid-day-number {
-  color: #fff !important;
+  color: var(--foreground) !important;
+}
+
+.calendar-page .fc .fc-col-header-cell-cushion,
+.calendar-page .fc .fc-toolbar-title,
+.calendar-page .fc .fc-button {
+  color: var(--foreground);
+}
+
+@media (prefers-color-scheme: dark) {
+  .calendar-page .fc {
+    --fc-border-color: #374151;
+  }
+
+  .calendar-page .fc .fc-button {
+    border-color: #4b5563;
+    background-color: #1f2937;
+  }
+
+  .calendar-page .fc .fc-button:not(:disabled):hover {
+    background-color: #374151;
+  }
 }
 
 .event-modal {
