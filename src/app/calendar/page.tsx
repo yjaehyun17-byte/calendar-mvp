@@ -65,6 +65,14 @@ function addHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
+function isSameLocalDate(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 function getReadableTextColor(hexColor: string): "#111827" | "#ffffff" {
   const hex = hexColor.replace("#", "").trim();
   const normalized =
@@ -245,11 +253,26 @@ export default function CalendarPage() {
   };
 
   const openCreateModal = (start: Date, end?: Date) => {
+    const suggestedStart = (() => {
+      if (end) return start;
+
+      const dayEvents = events
+        .map((event) => new Date(event.start))
+        .filter((eventStart) => !Number.isNaN(eventStart.getTime()))
+        .filter((eventStart) => isSameLocalDate(eventStart, start))
+        .sort((a, b) => a.getTime() - b.getTime());
+
+      const latestStart = dayEvents.at(-1);
+      if (!latestStart) return start;
+
+      return addHours(latestStart, 1);
+    })();
+
     setEditingId(null);
     setForm({
       title: "",
-      start: toDateTimeLocal(start),
-      end: toDateTimeLocal(end ?? addHours(start, 1)),
+      start: toDateTimeLocal(suggestedStart),
+      end: toDateTimeLocal(end ?? addHours(suggestedStart, 1)),
       notes: "",
       color: DEFAULT_COLOR,
     });
