@@ -115,6 +115,44 @@ export default function CalendarPage() {
     }));
   }, [events]);
 
+  const userDisplayName = useMemo(() => {
+    if (!user) return "Google 사용자";
+
+    const metadata = user.user_metadata as Record<string, unknown> | undefined;
+    const identities = Array.isArray(user.identities)
+      ? (user.identities as Array<{
+          identity_data?: Record<string, unknown> | null;
+        }>)
+      : [];
+    const identityData = identities
+      .map((identity) => identity.identity_data)
+      .filter(
+        (value): value is Record<string, unknown> =>
+          Boolean(value) && typeof value === "object",
+      );
+
+    const candidateNames = [
+      metadata?.name,
+      metadata?.full_name,
+      metadata?.preferred_username,
+      ...identityData.flatMap((identity) => [
+        identity.name,
+        identity.full_name,
+        identity.given_name,
+        identity.nickname,
+        identity.preferred_username,
+      ]),
+      user.email,
+    ];
+
+    const displayName = candidateNames.find(
+      (value): value is string =>
+        typeof value === "string" && value.trim().length > 0,
+    );
+
+    return displayName ?? "Google 사용자";
+  }, [user]);
+
   const resetForm = () => {
     setForm({
       title: "",
@@ -207,7 +245,10 @@ export default function CalendarPage() {
     const redirectTo = `${window.location.origin}/calendar`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        scopes: "openid email profile",
+      },
     });
 
     if (error) {
@@ -432,7 +473,7 @@ export default function CalendarPage() {
           }}
         >
           <p style={{ margin: 0, color: "#374151" }}>
-            로그인됨: <strong>{user.email ?? "Google 사용자"}</strong>
+            로그인됨: <strong>{userDisplayName}</strong>
           </p>
           <button
             type="button"
