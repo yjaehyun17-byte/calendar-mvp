@@ -67,7 +67,7 @@ function addHours(date: Date, hours: number): Date {
 
 function getGoogleAuthHint(errorMessage: string): string {
   if (errorMessage.includes("Unsupported provider")) {
-    return "Supabase에서 Google Provider가 비활성화되어 있습니다. Supabase Dashboard > Authentication > Providers > Google을 활성화하고 Client ID/Secret을 저장해 주세요.";
+    return "현재 Supabase 프로젝트에서 Google Provider가 꺼져 있어 로그인할 수 없습니다. Supabase Dashboard > Authentication > Providers > Google에서 Enabled를 켜고 Client ID/Secret 저장 후 다시 시도해 주세요.";
   }
 
   if (errorMessage.includes("redirect_to") || errorMessage.includes("redirect")) {
@@ -199,21 +199,36 @@ export default function CalendarPage() {
     setIsSigningIn(true);
     setAuthError(null);
 
-    const redirectTo = `${window.location.origin}/calendar`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
+    try {
+      const redirectTo = `${window.location.origin}/calendar`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.url) {
+        throw new Error("Google 로그인 URL을 생성하지 못했습니다.");
+      }
+
+      window.location.assign(data.url);
+    } catch (error) {
       console.error(error);
-      setAuthError(getGoogleAuthHint(error.message));
+      const message =
+        error instanceof Error
+          ? error.message
+          : "알 수 없는 인증 오류가 발생했습니다.";
+      setAuthError(getGoogleAuthHint(message));
       setIsSigningIn(false);
     }
   };
@@ -435,6 +450,10 @@ export default function CalendarPage() {
               }}
             >
               {authError}
+              <br />
+              <span style={{ fontSize: "12px", color: "#7f1d1d" }}>
+                현재 연결된 Supabase URL: {process.env.NEXT_PUBLIC_SUPABASE_URL}
+              </span>
             </p>
           ) : null}
         </section>

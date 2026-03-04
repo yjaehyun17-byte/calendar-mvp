@@ -33,3 +33,6 @@ npm run dev
   1) Supabase의 Google Provider가 실제로 **Enabled** 상태인지 확인
   2) Client ID/Secret 저장 후 **Save** 버튼을 눌렀는지 확인
   3) 저장 후 10~20초 뒤 다시 시도 (설정 반영 지연 가능)
+  4) 배포 URL이 바뀌었다면 Supabase URL Configuration의 Redirect URLs에 새 URL(예: `https://calendar-mvp-swart.vercel.app/calendar`)을 추가
+
+> 이 오류는 코드가 아니라 Supabase 프로젝트 설정 문제로 발생합니다. Provider를 켜면 같은 코드로 정상 로그인됩니다.
