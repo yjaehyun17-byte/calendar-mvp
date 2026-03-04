@@ -78,39 +78,76 @@ function addHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
-function isSameLocalDate(a: Date, b: Date): boolean {
+function getGoogleAuthHint(errorMessage: string): string {
+  if (errorMessage.includes("Unsupported provider")) {
+    return "현재 Supabase 프로젝트에서 Google Provider가 꺼져 있어 로그인할 수 없습니다. Supabase Dashboard > Authentication > Providers > Google에서 Enabled를 켜고 Client ID/Secret 저장 후 다시 시도해 주세요.";
+  }
+
+  if (errorMessage.includes("redirect_to") || errorMessage.includes("redirect")) {
+    return "Redirect URL 설정을 확인해 주세요. Supabase Authentication > URL Configuration의 Site URL/Redirect URLs에 현재 배포 URL을 추가해야 합니다.";
+  }
+
+  return "Supabase 인증 설정(Provider 활성화, Client ID/Secret, Redirect URL)을 확인해 주세요.";
+}
+
+function pickFirstText(values: Array<unknown>): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function getDisplayName(user: User | null): string {
+  if (!user) return "";
+
+  const metadata = user.user_metadata as {
+    name?: string;
+    full_name?: string;
+    given_name?: string;
+    family_name?: string;
+    preferred_username?: string;
+  };
+
+  const identities = Array.isArray(user.identities) ? user.identities : [];
+  const identityData = identities.find((identity) => identity.provider === "google")
+    ?.identity_data as
+    | {
+        name?: string;
+        full_name?: string;
+        given_name?: string;
+        family_name?: string;
+      }
+    | undefined;
+
+  const mergedGivenFamilyName = [
+    pickFirstText([metadata?.given_name, identityData?.given_name]),
+    pickFirstText([metadata?.family_name, identityData?.family_name]),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
+    pickFirstText([
+      metadata?.full_name,
+      metadata?.name,
+      identityData?.full_name,
+      identityData?.name,
+      mergedGivenFamilyName,
+      metadata?.preferred_username,
+      user.email,
+    ]) ?? "Google 사용자"
   );
 }
 
-function getReadableTextColor(hexColor: string): "#111827" | "#ffffff" {
-  const hex = hexColor.replace("#", "").trim();
-  const normalized =
-    hex.length === 3
-      ? hex
-          .split("")
-          .map((char) => `${char}${char}`)
-          .join("")
-      : hex;
-
-  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
-    return "#ffffff";
-  }
-
-  const red = parseInt(normalized.slice(0, 2), 16);
-  const green = parseInt(normalized.slice(2, 4), 16);
-  const blue = parseInt(normalized.slice(4, 6), 16);
-  const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
-
-  return brightness >= 150 ? "#111827" : "#ffffff";
-}
-
 export default function CalendarPage() {
+
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -245,6 +282,7 @@ export default function CalendarPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAuthError(null);
       setIsAuthLoading(false);
     });
 
@@ -276,22 +314,45 @@ export default function CalendarPage() {
   }, [user]);
 
   const signInWithGoogle = async () => {
-    const redirectTo = `${window.location.origin}/calendar`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        scopes: "openid email profile",
-      },
-    });
+    setIsSigningIn(true);
+    setAuthError(null);
 
-    if (error) {
+    try {
+      const redirectTo = `${window.location.origin}/calendar`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.url) {
+        throw new Error("Google 로그인 URL을 생성하지 못했습니다.");
+      }
+
+      window.location.assign(data.url);
+    } catch (error) {
       console.error(error);
-      alert("Google 로그인에 실패했습니다.");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "알 수 없는 인증 오류가 발생했습니다.";
+      setAuthError(getGoogleAuthHint(message));
+      setIsSigningIn(false);
     }
   };
 
   const signOut = async () => {
+    setAuthError(null);
     const { error } = await supabase.auth.signOut();
 
     if (error) {
@@ -575,18 +636,39 @@ export default function CalendarPage() {
           <button
             type="button"
             onClick={signInWithGoogle}
+            disabled={isSigningIn}
             style={{
               border: "1px solid #2563eb",
-              background: "#2563eb",
+              background: isSigningIn ? "#93c5fd" : "#2563eb",
               color: "#fff",
               borderRadius: "8px",
               padding: "10px 14px",
-              cursor: "pointer",
+              cursor: isSigningIn ? "not-allowed" : "pointer",
               fontWeight: 600,
             }}
           >
-            Google로 로그인
+            {isSigningIn ? "Google로 이동 중..." : "Google로 로그인"}
           </button>
+
+          {authError ? (
+            <p
+              style={{
+                margin: 0,
+                padding: "10px 12px",
+                borderRadius: "8px",
+                background: "#fef2f2",
+                color: "#b91c1c",
+                fontSize: "14px",
+                lineHeight: 1.5,
+              }}
+            >
+              {authError}
+              <br />
+              <span style={{ fontSize: "12px", color: "#7f1d1d" }}>
+                현재 연결된 Supabase URL: {process.env.NEXT_PUBLIC_SUPABASE_URL}
+              </span>
+            </p>
+          ) : null}
         </section>
       ) : null}
 
@@ -602,7 +684,7 @@ export default function CalendarPage() {
           }}
         >
           <p style={{ margin: 0, color: "#374151" }}>
-            로그인됨: <strong>{userDisplayName}</strong>
+            로그인됨: <strong>{getDisplayName(user)}</strong>
           </p>
           <button
             type="button"
