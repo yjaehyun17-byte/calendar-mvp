@@ -77,6 +77,16 @@ function getGoogleAuthHint(errorMessage: string): string {
   return "Supabase 인증 설정(Provider 활성화, Client ID/Secret, Redirect URL)을 확인해 주세요.";
 }
 
+function pickFirstText(values: Array<unknown>): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
 function getDisplayName(user: User | null): string {
   if (!user) return "";
 
@@ -88,13 +98,34 @@ function getDisplayName(user: User | null): string {
     preferred_username?: string;
   };
 
+  const identities = Array.isArray(user.identities) ? user.identities : [];
+  const identityData = identities.find((identity) => identity.provider === "google")
+    ?.identity_data as
+    | {
+        name?: string;
+        full_name?: string;
+        given_name?: string;
+        family_name?: string;
+      }
+    | undefined;
+
+  const mergedGivenFamilyName = [
+    pickFirstText([metadata?.given_name, identityData?.given_name]),
+    pickFirstText([metadata?.family_name, identityData?.family_name]),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    metadata?.name ||
-    metadata?.full_name ||
-    [metadata?.given_name, metadata?.family_name].filter(Boolean).join(" ") ||
-    metadata?.preferred_username ||
-    user.email ||
-    "Google 사용자"
+    pickFirstText([
+      metadata?.full_name,
+      metadata?.name,
+      identityData?.full_name,
+      identityData?.name,
+      mergedGivenFamilyName,
+      metadata?.preferred_username,
+      user.email,
+    ]) ?? "Google 사용자"
   );
 }
 
