@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import bundledMaster from "../../data/krx-master.json";
 
 export type CompanyMasterItem = {
   name: string;
@@ -43,15 +44,23 @@ function normalizeItem(item: RawMasterItem): CompanyMasterItem | null {
 }
 
 export async function loadCompanyMaster(): Promise<CompanyMasterItem[]> {
+  const normalizeList = (rows: RawMasterItem[]) =>
+    rows
+      .map((item) => normalizeItem(item))
+      .filter((item): item is CompanyMasterItem => item !== null);
+
   try {
     const raw = await fs.readFile(MASTER_PATH, "utf-8");
     const parsed = JSON.parse(raw) as RawMasterItem[];
-    return parsed
-      .map((item) => normalizeItem(item))
-      .filter((item): item is CompanyMasterItem => item !== null);
+    const normalized = normalizeList(parsed);
+    if (normalized.length > 0) {
+      return normalized;
+    }
   } catch {
-    return [];
+    // noop: fallback to bundled master below
   }
+
+  return normalizeList(bundledMaster as RawMasterItem[]);
 }
 
 export function searchCompanyMaster(
@@ -61,7 +70,7 @@ export function searchCompanyMaster(
   const keyword = query.trim().toLowerCase();
   const compactKeyword = keyword.replace(/\s+/g, "");
 
-  if (keyword.length < 2) {
+  if (keyword.length < 1) {
     return [];
   }
 

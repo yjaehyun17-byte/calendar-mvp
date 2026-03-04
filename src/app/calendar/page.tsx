@@ -334,7 +334,7 @@ export default function CalendarPage() {
   useEffect(() => {
     const trimmedQuery = companyQuery.trim();
 
-    if (trimmedQuery.length < 2) {
+    if (trimmedQuery.length < 1) {
       setCompanyResults([]);
       setIsCompanyLoading(false);
       return;
@@ -719,7 +719,7 @@ export default function CalendarPage() {
             ) : null}
 
             {!isCompanyLoading &&
-            companyQuery.trim().length >= 2 &&
+            companyQuery.trim().length >= 1 &&
             companyResults.length === 0 ? (
               <p style={{ margin: 0, color: "#6b7280", fontSize: "13px" }}>
                 검색 결과가 없습니다. 회사명을 더 정확히 입력해 주세요.
