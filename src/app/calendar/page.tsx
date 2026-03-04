@@ -78,6 +78,29 @@ function addHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
 }
 
+function getReadableTextColor(bgColor: string): string {
+  const normalized = bgColor.trim();
+  const color = normalized.startsWith("#") ? normalized.slice(1) : normalized;
+  const expanded =
+    color.length === 3
+      ? color
+          .split("")
+          .map((value) => value + value)
+          .join("")
+      : color;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(expanded)) {
+    return "#ffffff";
+  }
+
+  const r = Number.parseInt(expanded.substring(0, 2), 16);
+  const g = Number.parseInt(expanded.substring(2, 4), 16);
+  const b = Number.parseInt(expanded.substring(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+  return brightness > 128 ? "#000000" : "#ffffff";
+}
+
 function getGoogleAuthHint(errorMessage: string): string {
   if (errorMessage.includes("Unsupported provider")) {
     return "현재 Supabase 프로젝트에서 Google Provider가 꺼져 있어 로그인할 수 없습니다. Supabase Dashboard > Authentication > Providers > Google에서 Enabled를 켜고 Client ID/Secret 저장 후 다시 시도해 주세요.";
