@@ -30,12 +30,9 @@ function formatReturn(ret: number | null) {
   return `${sign}${ret.toFixed(2)}%`;
 }
 
-type FilterType = "전체" | "탐방" | "컨콜";
-
 export default function FollowupPage() {
   const [items, setItems] = useState<FollowupItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterType>("전체");
 
   useEffect(() => {
     const load = async () => {
@@ -58,32 +55,9 @@ export default function FollowupPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", alignItems: "start" }}>
         <section>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#374151", margin: 0 }}>
-              수익률 트래킹
-            </h2>
-            <div style={{ display: "flex", gap: "6px" }}>
-              {(["전체", "탐방", "컨콜"] as FilterType[]).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setFilter(type)}
-                  style={{
-                    padding: "4px 12px",
-                    borderRadius: "999px",
-                    fontSize: "13px",
-                    fontWeight: filter === type ? 700 : 400,
-                    border: filter === type ? "2px solid #2563eb" : "1px solid #d1d5db",
-                    background: filter === type ? "#eff6ff" : "#fff",
-                    color: filter === type ? "#2563eb" : "#374151",
-                    cursor: "pointer",
-                  }}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          </div>
+          <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#374151", marginBottom: "12px" }}>
+            수익률 트래킹
+          </h2>
 
           {isLoading ? (
             <p style={{ color: "#6b7280" }}>데이터를 불러오는 중...</p>
@@ -111,9 +85,7 @@ export default function FollowupPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items
-                    .filter((item) => filter === "전체" || item.eventType === filter)
-                    .map((item) => {
+                  {items.map((item) => {
                       const ret = item.returnPct;
                       const retColor = ret === null ? "#6b7280" : ret >= 0 ? "#dc2626" : "#2563eb";
                       return (
