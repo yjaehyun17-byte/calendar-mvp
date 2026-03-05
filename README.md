@@ -36,6 +36,12 @@ DATA_GO_KR_KRX_LISTED_ENDPOINT=https://apis.data.go.kr/...
 CRON_SECRET=very-strong-secret
 ```
 
+빠른 시작이 필요하면 `.env.example`를 복사해서 `.env.local`로 만들어 사용하세요.
+
+```bash
+cp .env.example .env.local
+```
+
 2. Supabase 대시보드에서 **Authentication > Providers > Google** 를 활성화하고, Google Cloud에서 발급한 **Client ID / Client Secret** 을 저장하세요.
 3. Google Cloud Console > OAuth 클라이언트의 승인된 Redirect URI에 아래 주소를 추가하세요.
    - `https://<YOUR_SUPABASE_PROJECT_REF>.supabase.co/auth/v1/callback`
@@ -51,6 +57,18 @@ npm run dev
 ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000) 접속 후 Google 로그인 버튼으로 인증할 수 있습니다.
+
+## 기능 추가 전 안정화 체크리스트
+
+신규 기능 추가 전에 아래 명령으로 현재 상태를 빠르게 점검하면 오류를 줄일 수 있습니다.
+
+```bash
+npm run lint
+npm run build
+```
+
+- `lint`는 사용하지 않는 변수/타입 불일치 같은 문제를 조기에 발견합니다.
+- `build`는 배포 단계에서만 드러나는 App Router/Route Handler 문제를 미리 확인합니다.
 
 ## Troubleshooting
 
