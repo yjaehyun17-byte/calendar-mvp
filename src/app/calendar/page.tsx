@@ -225,6 +225,9 @@ export default function CalendarPage() {
     end: "",
     notes: "",
     color: DEFAULT_COLOR,
+    irName: "",
+    irContact: "",
+    irAddress: "",
   });
   const [companyQuery, setCompanyQuery] = useState("");
   const [companyResults, setCompanyResults] = useState<CompanySearchResult[]>(
