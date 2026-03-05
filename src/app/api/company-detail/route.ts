@@ -10,12 +10,9 @@ type NaverFinancialItem = {
   [key: string]: string | number | null;
 };
 
-async function safeFetch(url: string) {
+async function safeFetch(url: string, extraHeaders?: Record<string, string>) {
   const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      "Referer": "https://m.stock.naver.com/",
-    },
+    headers: { "User-Agent": "Mozilla/5.0", ...extraHeaders },
     signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) return null;
@@ -32,28 +29,37 @@ function parseNaverNumber(v: string | number | null | undefined): number | null 
 }
 
 async function fetchNaverFinancials(ticker: string) {
+  const naverHeaders = { "Referer": "https://m.stock.naver.com/" };
   const [annualData, quarterData] = await Promise.all([
-    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`),
-    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`),
+    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`, naverHeaders),
+    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`, naverHeaders),
   ]);
 
-  function parseRows(data: { financeInfo?: NaverFinancialItem[] } | null, isQuarter: boolean) {
-    if (!data?.financeInfo) return [];
-    return data.financeInfo.map((item) => {
-      const period = String(item.stacYymm ?? item.stacYm ?? "").replace("/", "-");
+  function parseRows(data: unknown, isQuarter: boolean) {
+    // Handle both array response and { financeInfo: [...] } wrapper
+    let rows: NaverFinancialItem[] = [];
+    if (Array.isArray(data)) {
+      rows = data as NaverFinancialItem[];
+    } else if (data && typeof data === "object") {
+      const obj = data as Record<string, unknown>;
+      const fin = obj.financeInfo ?? obj.finance ?? obj.data;
+      if (Array.isArray(fin)) rows = fin as NaverFinancialItem[];
+    }
+    return rows.map((item) => {
+      const rawPeriod = String(item.stacYymm ?? item.stacYm ?? item.yyyyMm ?? "").replace("/", "-");
       return {
-        period: isQuarter ? period.slice(0, 7) : period.slice(0, 4),
-        revenue: parseNaverNumber(item.totRevnu ?? item.saleAmt),
-        operatingIncome: parseNaverNumber(item.bsopPrfi ?? item.bsopProfi),
-        netIncome: parseNaverNumber(item.thtrNtis ?? item.netProfi),
+        period: isQuarter ? rawPeriod.slice(0, 7) : rawPeriod.slice(0, 4),
+        revenue: parseNaverNumber(item.totRevnu ?? item.saleAmt ?? item.revenue),
+        operatingIncome: parseNaverNumber(item.bsopPrfi ?? item.bsopProfi ?? item.operatingIncome),
+        netIncome: parseNaverNumber(item.thtrNtis ?? item.netProfi ?? item.netIncome),
         eps: parseNaverNumber(item.eps),
       };
     }).filter((r) => r.period);
   }
 
   return {
-    annualFinancials: parseRows(annualData as { financeInfo?: NaverFinancialItem[] } | null, false),
-    quarterlyFinancials: parseRows(quarterData as { financeInfo?: NaverFinancialItem[] } | null, true),
+    annualFinancials: parseRows(annualData, false),
+    quarterlyFinancials: parseRows(quarterData, true),
   };
 }
 
