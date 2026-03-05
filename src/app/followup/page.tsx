@@ -12,6 +12,10 @@ type FollowupItem = {
   priceAtEvent: number | null;
   currentPrice: number | null;
   returnPct: number | null;
+  notes: string;
+  irName: string;
+  irContact: string;
+  irAddress: string;
 };
 
 type SortKey = keyof Pick<FollowupItem, "companyName" | "eventDate" | "daysAgo" | "priceAtEvent" | "currentPrice" | "returnPct">;
@@ -47,6 +51,7 @@ export default function FollowupPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey>("eventDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -71,6 +76,14 @@ export default function FollowupPage() {
       setSortDir("asc");
     }
   };
+
+  const selectedEvents = useMemo(
+    () => items.filter((i) => i.ticker === selectedTicker).sort(
+      (a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()
+    ),
+    [items, selectedTicker]
+  );
+  const selectedCompany = selectedEvents[0] ?? null;
 
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -138,7 +151,12 @@ export default function FollowupPage() {
                     const retColor = ret === null ? "#6b7280" : ret >= 0 ? "#dc2626" : "#2563eb";
                     return (
                       <tr key={item.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                        <td style={{ padding: "10px 14px", fontWeight: 600 }}>{item.companyName}</td>
+                        <td
+                          onClick={() => setSelectedTicker(item.ticker === selectedTicker ? null : item.ticker)}
+                          style={{ padding: "10px 14px", fontWeight: 600, cursor: "pointer", color: selectedTicker === item.ticker ? "#2563eb" : "inherit", textDecoration: selectedTicker === item.ticker ? "underline" : "none" }}
+                        >
+                          {item.companyName}
+                        </td>
                         <td style={{ padding: "10px 14px", color: "#374151" }}>{formatDate(item.eventDate)}</td>
                         <td style={{ padding: "10px 14px", color: "#374151" }}>
                           {item.daysAgo >= 0 ? `D+${item.daysAgo}` : `D${item.daysAgo}`}
@@ -156,7 +174,73 @@ export default function FollowupPage() {
         </section>
 
         <section>
-          {/* 추후 기능 추가 예정 */}
+          {selectedCompany ? (
+            <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", display: "grid", gap: "16px" }}>
+              {/* 헤더 */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>{selectedCompany.companyName}</h2>
+                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#6b7280" }}>{selectedCompany.ticker}.KRX</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTicker(null)}
+                  style={{ border: "none", background: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280" }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 방문 이력 */}
+              <div>
+                <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "14px" }}>방문 이력</p>
+                <div style={{ display: "grid", gap: "6px" }}>
+                  {selectedEvents.map((ev) => {
+                    const ret = ev.returnPct;
+                    const retColor = ret === null ? "#6b7280" : ret >= 0 ? "#dc2626" : "#2563eb";
+                    return (
+                      <div key={ev.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "#f9fafb", borderRadius: "8px", fontSize: "13px" }}>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <span style={{ padding: "2px 8px", borderRadius: "999px", fontWeight: 700, fontSize: "12px", background: ev.eventType === "탐방" ? "#fee2e2" : "#dbeafe", color: ev.eventType === "탐방" ? "#dc2626" : "#2563eb" }}>
+                            {ev.eventType}
+                          </span>
+                          <span>{formatDate(ev.eventDate)}</span>
+                          <span style={{ color: "#9ca3af" }}>D+{ev.daysAgo}</span>
+                        </div>
+                        <span style={{ fontWeight: 700, color: retColor }}>{formatReturn(ret)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* IR 담당자 */}
+              {(selectedCompany.irName || selectedCompany.irContact || selectedCompany.irAddress) && (
+                <div>
+                  <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "14px" }}>IR 담당자</p>
+                  <div style={{ background: "#f9fafb", borderRadius: "8px", padding: "10px", display: "grid", gap: "4px", fontSize: "13px" }}>
+                    {selectedCompany.irName && <p style={{ margin: 0 }}>이름: {selectedCompany.irName}</p>}
+                    {selectedCompany.irContact && <p style={{ margin: 0 }}>연락처: {selectedCompany.irContact}</p>}
+                    {selectedCompany.irAddress && <p style={{ margin: 0 }}>주소: {selectedCompany.irAddress}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* 메모 */}
+              {selectedCompany.notes && (
+                <div>
+                  <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "14px" }}>메모</p>
+                  <p style={{ margin: 0, background: "#f9fafb", borderRadius: "8px", padding: "10px", fontSize: "13px", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                    {selectedCompany.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ border: "1px dashed #d1d5db", borderRadius: "12px", padding: "40px 16px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
+              기업명을 클릭하면 상세 정보가 표시됩니다.
+            </div>
+          )}
         </section>
       </div>
     </main>

@@ -5,6 +5,10 @@ type EventRow = {
   id: string;
   title: string;
   start_at: string;
+  notes: string | null;
+  ir_name: string | null;
+  ir_contact: string | null;
+  ir_address: string | null;
 };
 
 type StockResult = {
@@ -72,7 +76,7 @@ export async function GET() {
 
   const { data: events, error } = await supabase
     .from("events")
-    .select("id,title,start_at")
+    .select("id,title,start_at,notes,ir_name,ir_contact,ir_address")
     .order("start_at", { ascending: false });
 
   if (error) {
@@ -100,6 +104,10 @@ export async function GET() {
         daysAgo: Math.floor(
           (now.getTime() - new Date(event.start_at).getTime()) / (1000 * 60 * 60 * 24)
         ),
+        notes: event.notes ?? "",
+        irName: event.ir_name ?? "",
+        irContact: event.ir_contact ?? "",
+        irAddress: event.ir_address ?? "",
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
