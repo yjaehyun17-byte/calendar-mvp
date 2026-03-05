@@ -1011,22 +1011,6 @@ export default function CalendarPage() {
             ) : null}
 
             <label className="calendar-modal-label">
-              선택된 기업
-              <input
-                className="calendar-modal-input"
-                type="text"
-                value={
-                  form.companyName && form.companyTicker
-                    ? `${form.companyName} (${form.companyTicker}, ${form.companyMarket})`
-                    : ""
-                }
-                readOnly
-                placeholder="기업을 검색해서 선택해 주세요"
-                style={{ width: "100%", padding: "8px", marginTop: "4px" }}
-              />
-            </label>
-
-            <label className="calendar-modal-label">
               시작
               <input
                 className="calendar-modal-input"
