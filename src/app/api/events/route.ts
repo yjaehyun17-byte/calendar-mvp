@@ -1,5 +1,5 @@
-﻿import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { NextResponse } from "next/server";
+import { getServerSupabaseClient } from "@/lib/serverSupabase";
 
 type EventRow = {
   id: string;
@@ -36,7 +36,26 @@ function toApiEvent(row: EventRow) {
   };
 }
 
+function getApiClient() {
+  const supabase = getServerSupabaseClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  return supabase;
+}
+
 export async function GET() {
+  const supabase = getApiClient();
+
+  if (!supabase) {
+    return NextResponse.json(
+      { error: "Supabase server environment variables are missing." },
+      { status: 500 },
+    );
+  }
+
   const { data, error } = await supabase
     .from("events")
     .select("id,title,start_at,end_at,notes,color")
@@ -50,6 +69,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const supabase = getApiClient();
+
+  if (!supabase) {
+    return NextResponse.json(
+      { error: "Supabase server environment variables are missing." },
+      { status: 500 },
+    );
+  }
+
   const body = (await request.json()) as EventPayload;
 
   const title = body.title?.trim();
