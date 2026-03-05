@@ -36,6 +36,8 @@ type AttendanceMember = {
   userEmail: string | null;
 };
 
+type AttendanceStatus = "attending" | "maybe" | "not_attending";
+
 type AttendanceApiResponse = {
   myStatus: AttendanceStatus | null;
   summary: AttendanceSummary;
