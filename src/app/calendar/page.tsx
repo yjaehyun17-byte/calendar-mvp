@@ -1094,20 +1094,6 @@ export default function CalendarPage() {
               </section>
             ) : null}
 
-            <label className="calendar-modal-label">
-              메모
-              <textarea
-                className="calendar-modal-textarea"
-                value={form.notes}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, notes: e.target.value }))
-                }
-                placeholder="메모"
-                rows={3}
-                style={{ width: "100%", padding: "8px", marginTop: "4px" }}
-              />
-            </label>
-
             <section
               style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px", display: "grid", gap: "8px" }}
             >
@@ -1146,6 +1132,20 @@ export default function CalendarPage() {
                 />
               </label>
             </section>
+
+            <label className="calendar-modal-label">
+              메모
+              <textarea
+                className="calendar-modal-textarea"
+                value={form.notes}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                placeholder="메모"
+                rows={3}
+                style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+              />
+            </label>
 
             <div
               style={{
