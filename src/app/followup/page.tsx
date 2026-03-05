@@ -96,7 +96,7 @@ export default function FollowupPage() {
               {items.map((item) => {
                 const ret = item.returnPct;
                 const retColor =
-                  ret === null ? "#6b7280" : ret >= 0 ? "#16a34a" : "#dc2626";
+                  ret === null ? "#6b7280" : ret >= 0 ? "#dc2626" : "#2563eb";
 
                 return (
                   <tr
