@@ -886,100 +886,6 @@ export default function CalendarPage() {
               {editingId ? "기업 탐방 일정 수정" : "기업 탐방 일정 추가"}
             </h2>
 
-            {editingId ? (
-              <section
-                style={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  padding: "10px",
-                  display: "grid",
-                  gap: "10px",
-                }}
-              >
-                <strong style={{ fontSize: "14px" }}>팀 참석</strong>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "10px",
-                    alignItems: "start",
-                  }}
-                >
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
-                      현재 참석자 {attendanceSummary.attending}명
-                    </p>
-                    {isAttendanceLoading ? (
-                      <p style={{ margin: 0, fontSize: "13px" }}>참석 정보를 불러오는 중...</p>
-                    ) : null}
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        disabled={isAttendanceSaving || myAttendance === "attending"}
-                        onClick={() => handleAttendanceSelect("attend")}
-                        style={{
-                          border: "1px solid #2563eb",
-                          background: myAttendance === "attending" ? "#bfdbfe" : "#2563eb",
-                          color: myAttendance === "attending" ? "#1e3a8a" : "#ffffff",
-                          borderRadius: "8px",
-                          padding: "6px 10px",
-                          cursor:
-                            isAttendanceSaving || myAttendance === "attending"
-                              ? "not-allowed"
-                              : "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
-                        참석하기
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isAttendanceSaving || myAttendance !== "attending"}
-                        onClick={() => handleAttendanceSelect("cancel")}
-                        style={{
-                          border: "1px solid #d97706",
-                          background: myAttendance === "attending" ? "#ffedd5" : "#ffffff",
-                          color: "#9a3412",
-                          borderRadius: "8px",
-                          padding: "6px 10px",
-                          cursor:
-                            isAttendanceSaving || myAttendance !== "attending"
-                              ? "not-allowed"
-                              : "pointer",
-                          fontWeight: 600,
-                        }}
-                      >
-                        참석 취소
-                      </button>
-                    </div>
-                  </div>
-
-                  <aside
-                    style={{
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                      padding: "8px",
-                      background: "#f9fafb",
-                    }}
-                  >
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>
-                      참석자 명단
-                    </p>
-                    <ul style={{ margin: "8px 0 0", paddingLeft: "18px", fontSize: "13px" }}>
-                      {attendanceMembers.length > 0 ? (
-                        attendanceMembers.map((member) => (
-                          <li key={member.userId}>
-                            {member.userName}
-                          </li>
-                        ))
-                      ) : (
-                        <li style={{ color: "#6b7280" }}>아직 참석자가 없습니다.</li>
-                      )}
-                    </ul>
-                  </aside>
-                </div>
-              </section>
-            ) : null}
 
             <label className="calendar-modal-label">
               일정 유형 *
@@ -1106,31 +1012,53 @@ export default function CalendarPage() {
                   gap: "8px",
                 }}
               >
-                <strong style={{ fontSize: "14px" }}>팀 참석 여부</strong>
-                <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
-                  참석 {attendanceSummary.attending}명 · 보류 {attendanceSummary.maybe}명 · 불참 {attendanceSummary.not_attending}명
-                </p>
+                <strong style={{ fontSize: "14px" }}>팀 참석</strong>
                 {isAttendanceLoading ? (
                   <p style={{ margin: 0, fontSize: "13px" }}>참석 정보를 불러오는 중...</p>
                 ) : null}
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                <button
-  type="button"
-  disabled={isAttendanceSaving}
-  onClick={() =>
-    handleAttendanceSelect(myAttendance === "attending" ? "cancel" : "attend")
-  }
-  style={{
-    border: "1px solid #d1d5db",
-    background: "#fff",
-    borderRadius: "8px",
-    padding: "6px 10px",
-    cursor: isAttendanceSaving ? "not-allowed" : "pointer",
-    fontWeight: 500,
-  }}
->
-  {myAttendance === "attending" ? "참석 취소" : "참석하기"}
-</button>  
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", alignItems: "start" }}>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
+                      참석 {attendanceSummary.attending}명
+                    </p>
+                    <button
+                      type="button"
+                      disabled={isAttendanceSaving}
+                      onClick={() =>
+                        handleAttendanceSelect(myAttendance === "attending" ? "cancel" : "attend")
+                      }
+                      style={{
+                        border: myAttendance === "attending" ? "1px solid #d97706" : "1px solid #2563eb",
+                        background: myAttendance === "attending" ? "#ffedd5" : "#2563eb",
+                        color: myAttendance === "attending" ? "#9a3412" : "#ffffff",
+                        borderRadius: "8px",
+                        padding: "6px 10px",
+                        cursor: isAttendanceSaving ? "not-allowed" : "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {myAttendance === "attending" ? "참석 취소" : "참석하기"}
+                    </button>
+                  </div>
+                  <aside
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      padding: "8px",
+                      background: "#f9fafb",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>참석자 명단</p>
+                    <ul style={{ margin: "6px 0 0", paddingLeft: "18px", fontSize: "13px" }}>
+                      {attendanceMembers.length > 0 ? (
+                        attendanceMembers.map((member) => (
+                          <li key={member.userId}>{member.userName}</li>
+                        ))
+                      ) : (
+                        <li style={{ color: "#6b7280" }}>아직 참석자가 없습니다.</li>
+                      )}
+                    </ul>
+                  </aside>
                 </div>
               </section>
             ) : null}
