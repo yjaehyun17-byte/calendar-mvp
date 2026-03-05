@@ -94,7 +94,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const supabase = getApiClient();
@@ -107,6 +107,26 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("userId")?.trim();
+
+  if (!userId) {
+    return NextResponse.json({ error: "userId is required." }, { status: 400 });
+  }
+
+  const { data: event, error: fetchError } = await supabase
+    .from("events")
+    .select("created_by")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+  }
+
+  if (event.created_by && event.created_by !== userId) {
+    return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
+  }
 
   const { error } = await supabase.from("events").delete().eq("id", id);
 

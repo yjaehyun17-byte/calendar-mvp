@@ -8,6 +8,7 @@ type EventRow = {
   end_at: string | null;
   notes: string | null;
   color: string | null;
+  created_by: string | null;
 };
 
 type EventPayload = {
@@ -16,6 +17,7 @@ type EventPayload = {
   end?: string | null;
   notes?: string;
   color?: string;
+  userId?: string;
 };
 
 function normalizeIso(value?: string | null): string | null {
@@ -33,6 +35,7 @@ function toApiEvent(row: EventRow) {
     end: row.end_at,
     notes: row.notes ?? "",
     color: row.color ?? "#2563eb",
+    createdBy: row.created_by ?? null,
   };
 }
 
@@ -58,7 +61,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("events")
-    .select("id,title,start_at,end_at,notes,color")
+    .select("id,title,start_at,end_at,notes,color,created_by")
     .order("start_at", { ascending: true });
 
   if (error) {
@@ -99,8 +102,9 @@ export async function POST(request: Request) {
       end_at: endAt,
       notes: body.notes?.trim() ?? "",
       color: body.color ?? "#2563eb",
+      created_by: body.userId?.trim() ?? null,
     })
-    .select("id,title,start_at,end_at,notes,color")
+    .select("id,title,start_at,end_at,notes,color,created_by")
     .single();
 
   if (error) {

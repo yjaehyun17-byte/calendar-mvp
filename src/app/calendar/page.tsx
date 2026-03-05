@@ -22,6 +22,7 @@ type CalendarEvent = {
   end?: string | null;
   notes: string;
   color: string;
+  createdBy: string | null;
 };
 
 type AttendanceSummary = {
@@ -599,6 +600,7 @@ export default function CalendarPage() {
       end: endIso,
       notes: generatedNotes,
       color: form.color || DEFAULT_COLOR,
+      userId: user?.id,
     };
 
     try {
@@ -636,7 +638,7 @@ export default function CalendarPage() {
     if (!window.confirm("이 이벤트를 삭제할까요?")) return;
 
     try {
-      const response = await fetch(`/api/events/${editingId}`, {
+      const response = await fetch(`/api/events/${editingId}?userId=${encodeURIComponent(user?.id ?? "")}`, {
         method: "DELETE",
       });
 
@@ -1097,7 +1099,7 @@ export default function CalendarPage() {
                 marginTop: "8px",
               }}
             >
-              {editingId ? (
+              {editingId && events.find((e) => e.id === editingId)?.createdBy === user?.id ? (
                 <button
                   className="calendar-modal-button"
                   type="button"
