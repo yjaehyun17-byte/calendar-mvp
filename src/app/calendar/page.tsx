@@ -1050,6 +1050,55 @@ export default function CalendarPage() {
               />
             </label>
 
+            {editingId ? (
+              <section
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                  display: "grid",
+                  gap: "8px",
+                }}
+              >
+                <strong style={{ fontSize: "14px" }}>팀 참석 여부</strong>
+                <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
+                  참석 {attendanceSummary.attending}명 · 보류 {attendanceSummary.maybe}명 · 불참 {attendanceSummary.not_attending}명
+                </p>
+                {isAttendanceLoading ? (
+                  <p style={{ margin: 0, fontSize: "13px" }}>참석 정보를 불러오는 중...</p>
+                ) : null}
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {[
+                    { value: "attending", label: "참석" },
+                    { value: "maybe", label: "보류" },
+                    { value: "not_attending", label: "불참" },
+                  ].map((option) => {
+                    const isActive = myAttendance === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        disabled={isAttendanceSaving}
+                        onClick={() =>
+                          handleAttendanceSelect(option.value as AttendanceStatus)
+                        }
+                        style={{
+                          border: isActive ? "1px solid #2563eb" : "1px solid #d1d5db",
+                          background: isActive ? "#dbeafe" : "#fff",
+                          borderRadius: "8px",
+                          padding: "6px 10px",
+                          cursor: isAttendanceSaving ? "not-allowed" : "pointer",
+                          fontWeight: isActive ? 700 : 500,
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
             <label className="calendar-modal-label">
               메모
               <textarea
