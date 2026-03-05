@@ -988,9 +988,14 @@ export default function CalendarPage() {
                 className="calendar-modal-input"
                 type="datetime-local"
                 value={form.start}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, start: e.target.value }))
-                }
+                onChange={(e) => {
+                  const newStart = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    start: newStart,
+                    end: newStart ? toDateTimeLocal(addHours(new Date(newStart), 1)) : prev.end,
+                  }));
+                }}
                 style={{ width: "100%", padding: "8px", marginTop: "4px" }}
               />
             </label>
