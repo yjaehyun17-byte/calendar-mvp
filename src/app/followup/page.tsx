@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import CompanyPanel from "../components/CompanyPanel";
 
 type FollowupItem = {
   id: string;
@@ -77,13 +78,6 @@ export default function FollowupPage() {
     }
   };
 
-  const selectedEvents = useMemo(
-    () => items.filter((i) => i.ticker === selectedTicker).sort(
-      (a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()
-    ),
-    [items, selectedTicker]
-  );
-  const selectedCompany = selectedEvents[0] ?? null;
 
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -174,68 +168,8 @@ export default function FollowupPage() {
         </section>
 
         <section>
-          {selectedCompany ? (
-            <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", display: "grid", gap: "16px" }}>
-              {/* 헤더 */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>{selectedCompany.companyName}</h2>
-                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#6b7280" }}>{selectedCompany.ticker}.KRX</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTicker(null)}
-                  style={{ border: "none", background: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280" }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* 방문 이력 */}
-              <div>
-                <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "14px" }}>방문 이력</p>
-                <div style={{ display: "grid", gap: "6px" }}>
-                  {selectedEvents.map((ev) => {
-                    const ret = ev.returnPct;
-                    const retColor = ret === null ? "#6b7280" : ret >= 0 ? "#dc2626" : "#2563eb";
-                    return (
-                      <div key={ev.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "#f9fafb", borderRadius: "8px", fontSize: "13px" }}>
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                          <span style={{ padding: "2px 8px", borderRadius: "999px", fontWeight: 700, fontSize: "12px", background: ev.eventType === "탐방" ? "#fee2e2" : "#dbeafe", color: ev.eventType === "탐방" ? "#dc2626" : "#2563eb" }}>
-                            {ev.eventType}
-                          </span>
-                          <span>{formatDate(ev.eventDate)}</span>
-                          <span style={{ color: "#9ca3af" }}>D+{ev.daysAgo}</span>
-                        </div>
-                        <span style={{ fontWeight: 700, color: retColor }}>{formatReturn(ret)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* IR 담당자 */}
-              {(selectedCompany.irName || selectedCompany.irContact || selectedCompany.irAddress) && (
-                <div>
-                  <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "14px" }}>IR 담당자</p>
-                  <div style={{ background: "#f9fafb", borderRadius: "8px", padding: "10px", display: "grid", gap: "4px", fontSize: "13px" }}>
-                    {selectedCompany.irName && <p style={{ margin: 0 }}>이름: {selectedCompany.irName}</p>}
-                    {selectedCompany.irContact && <p style={{ margin: 0 }}>연락처: {selectedCompany.irContact}</p>}
-                    {selectedCompany.irAddress && <p style={{ margin: 0 }}>주소: {selectedCompany.irAddress}</p>}
-                  </div>
-                </div>
-              )}
-
-              {/* 메모 */}
-              {selectedCompany.notes && (
-                <div>
-                  <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "14px" }}>메모</p>
-                  <p style={{ margin: 0, background: "#f9fafb", borderRadius: "8px", padding: "10px", fontSize: "13px", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                    {selectedCompany.notes}
-                  </p>
-                </div>
-              )}
-            </div>
+          {selectedTicker ? (
+            <CompanyPanel ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />
           ) : (
             <div style={{ border: "1px dashed #d1d5db", borderRadius: "12px", padding: "40px 16px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
               기업명을 클릭하면 상세 정보가 표시됩니다.
