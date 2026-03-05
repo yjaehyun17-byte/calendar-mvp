@@ -438,6 +438,9 @@ export default function CalendarPage() {
       end: toDateTimeLocal(end ?? addHours(suggestedStart, 1)),
       notes: "",
       color: DEFAULT_COLOR,
+      irName: "",
+      irContact: "",
+      irAddress: "",
     });
     setIsModalOpen(true);
   };
