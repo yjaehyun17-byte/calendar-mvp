@@ -2,6 +2,8 @@
 
 Supabase 기반 일정 관리 MVP입니다. Google OAuth 로그인 후 일정을 확인/수정할 수 있습니다.
 
+> 현재 버전에는 팀 `참석`(RSVP) 기능이 포함되어 있지 않습니다. (일정 CRUD + 상장사 검색 중심)
+
 ## Router / API 구조
 
 이 프로젝트는 **Next.js App Router(`src/app`)** 구조이며, API는 Route Handler(`src/app/api/**/route.ts`)로 구현되어 있습니다.
