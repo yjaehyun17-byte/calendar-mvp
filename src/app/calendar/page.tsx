@@ -1070,33 +1070,23 @@ export default function CalendarPage() {
                   <p style={{ margin: 0, fontSize: "13px" }}>참석 정보를 불러오는 중...</p>
                 ) : null}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {[
-                    { value: "attending", label: "참석" },
-                    { value: "maybe", label: "보류" },
-                    { value: "not_attending", label: "불참" },
-                  ].map((option) => {
-                    const isActive = myAttendance === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        disabled={isAttendanceSaving}
-                        onClick={() =>
-                          handleAttendanceSelect(option.value as AttendanceStatus)
-                        }
-                        style={{
-                          border: isActive ? "1px solid #2563eb" : "1px solid #d1d5db",
-                          background: isActive ? "#dbeafe" : "#fff",
-                          borderRadius: "8px",
-                          padding: "6px 10px",
-                          cursor: isAttendanceSaving ? "not-allowed" : "pointer",
-                          fontWeight: isActive ? 700 : 500,
-                        }}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
+                <button
+  type="button"
+  disabled={isAttendanceSaving}
+  onClick={() =>
+    handleAttendanceSelect(myAttendance === "attending" ? "cancel" : "attend")
+  }
+  style={{
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    borderRadius: "8px",
+    padding: "6px 10px",
+    cursor: isAttendanceSaving ? "not-allowed" : "pointer",
+    fontWeight: 500,
+  }}
+>
+  {myAttendance === "attending" ? "참석 취소" : "참석하기"}
+</button>  
                 </div>
               </section>
             ) : null}
