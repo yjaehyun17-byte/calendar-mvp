@@ -1018,26 +1018,23 @@ export default function CalendarPage() {
                 ) : null}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", alignItems: "start" }}>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
-                      참석 {attendanceSummary.attending}명
-                    </p>
                     <button
                       type="button"
-                      disabled={isAttendanceSaving}
+                      disabled={isAttendanceSaving || (myAttendance !== "attending" && attendanceSummary.attending >= 4)}
                       onClick={() =>
                         handleAttendanceSelect(myAttendance === "attending" ? "cancel" : "attend")
                       }
                       style={{
                         border: myAttendance === "attending" ? "1px solid #d97706" : "1px solid #2563eb",
-                        background: myAttendance === "attending" ? "#ffedd5" : "#2563eb",
+                        background: myAttendance === "attending" ? "#ffedd5" : (attendanceSummary.attending >= 4 ? "#93c5fd" : "#2563eb"),
                         color: myAttendance === "attending" ? "#9a3412" : "#ffffff",
                         borderRadius: "8px",
                         padding: "6px 10px",
-                        cursor: isAttendanceSaving ? "not-allowed" : "pointer",
+                        cursor: (isAttendanceSaving || (myAttendance !== "attending" && attendanceSummary.attending >= 4)) ? "not-allowed" : "pointer",
                         fontWeight: 600,
                       }}
                     >
-                      {myAttendance === "attending" ? "참석 취소" : "참석하기"}
+                      {myAttendance === "attending" ? "참석 취소" : (attendanceSummary.attending >= 4 ? "참석 마감" : "참석하기")}
                     </button>
                   </div>
                   <aside
@@ -1048,7 +1045,9 @@ export default function CalendarPage() {
                       background: "#f9fafb",
                     }}
                   >
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>참석자 명단</p>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>
+                      참석자 명단 ({attendanceSummary.attending}/4)
+                    </p>
                     <ul style={{ margin: "6px 0 0", paddingLeft: "18px", fontSize: "13px" }}>
                       {attendanceMembers.length > 0 ? (
                         attendanceMembers.map((member) => (
