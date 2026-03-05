@@ -23,6 +23,9 @@ type CalendarEvent = {
   notes: string;
   color: string;
   createdBy: string | null;
+  irName: string;
+  irContact: string;
+  irAddress: string;
 };
 
 type AttendanceSummary = {
@@ -54,6 +57,9 @@ type EventFormState = {
   end: string;
   notes: string;
   color: string;
+  irName: string;
+  irContact: string;
+  irAddress: string;
 };
 
 type CompanySearchResult = {
@@ -262,6 +268,9 @@ export default function CalendarPage() {
       end: "",
       notes: "",
       color: DEFAULT_COLOR,
+      irName: "",
+      irContact: "",
+      irAddress: "",
     });
     setEditingId(null);
     setCompanyQuery("");
@@ -451,6 +460,9 @@ export default function CalendarPage() {
       end: toDateTimeLocal(target.end),
       notes: stripGoogleFinanceLines(target.notes),
       color: target.color || DEFAULT_COLOR,
+      irName: target.irName ?? "",
+      irContact: target.irContact ?? "",
+      irAddress: target.irAddress ?? "",
     });
     setCompanyQuery(companyName);
     setIsModalOpen(true);
@@ -603,6 +615,9 @@ export default function CalendarPage() {
       notes: generatedNotes,
       color: form.color || DEFAULT_COLOR,
       userId: user?.id,
+      irName: form.irName.trim(),
+      irContact: form.irContact.trim(),
+      irAddress: form.irAddress.trim(),
     };
 
     try {
@@ -1087,18 +1102,44 @@ export default function CalendarPage() {
               />
             </label>
 
-            <label className="calendar-modal-label">
-              색상
-              <input
-                className="calendar-modal-input"
-                type="color"
-                value={form.color}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, color: e.target.value }))
-                }
-                style={{ width: "100%", height: "40px", marginTop: "4px" }}
-              />
-            </label>
+            <section
+              style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "10px", display: "grid", gap: "8px" }}
+            >
+              <strong style={{ fontSize: "14px" }}>IR 담당자</strong>
+              <label className="calendar-modal-label">
+                이름
+                <input
+                  className="calendar-modal-input"
+                  type="text"
+                  value={form.irName}
+                  onChange={(e) => setForm((prev) => ({ ...prev, irName: e.target.value }))}
+                  placeholder="담당자 이름"
+                  style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+                />
+              </label>
+              <label className="calendar-modal-label">
+                연락처
+                <input
+                  className="calendar-modal-input"
+                  type="text"
+                  value={form.irContact}
+                  onChange={(e) => setForm((prev) => ({ ...prev, irContact: e.target.value }))}
+                  placeholder="010-0000-0000"
+                  style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+                />
+              </label>
+              <label className="calendar-modal-label">
+                주소
+                <input
+                  className="calendar-modal-input"
+                  type="text"
+                  value={form.irAddress}
+                  onChange={(e) => setForm((prev) => ({ ...prev, irAddress: e.target.value }))}
+                  placeholder="방문 주소"
+                  style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+                />
+              </label>
+            </section>
 
             <div
               style={{

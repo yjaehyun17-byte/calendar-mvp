@@ -9,6 +9,9 @@ type EventRow = {
   notes: string | null;
   color: string | null;
   created_by: string | null;
+  ir_name: string | null;
+  ir_contact: string | null;
+  ir_address: string | null;
 };
 
 type EventPayload = {
@@ -18,6 +21,9 @@ type EventPayload = {
   notes?: string;
   color?: string;
   userId?: string;
+  irName?: string;
+  irContact?: string;
+  irAddress?: string;
 };
 
 function normalizeIso(value?: string | null): string | null {
@@ -36,6 +42,9 @@ function toApiEvent(row: EventRow) {
     notes: row.notes ?? "",
     color: row.color ?? "#2563eb",
     createdBy: row.created_by ?? null,
+    irName: row.ir_name ?? "",
+    irContact: row.ir_contact ?? "",
+    irAddress: row.ir_address ?? "",
   };
 }
 
@@ -61,7 +70,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("events")
-    .select("id,title,start_at,end_at,notes,color,created_by")
+    .select("id,title,start_at,end_at,notes,color,created_by,ir_name,ir_contact,ir_address")
     .order("start_at", { ascending: true });
 
   if (error) {
@@ -103,8 +112,11 @@ export async function POST(request: Request) {
       notes: body.notes?.trim() ?? "",
       color: body.color ?? "#2563eb",
       created_by: body.userId?.trim() ?? null,
+      ir_name: body.irName?.trim() ?? null,
+      ir_contact: body.irContact?.trim() ?? null,
+      ir_address: body.irAddress?.trim() ?? null,
     })
-    .select("id,title,start_at,end_at,notes,color,created_by")
+    .select("id,title,start_at,end_at,notes,color,created_by,ir_name,ir_contact,ir_address")
     .single();
 
   if (error) {
