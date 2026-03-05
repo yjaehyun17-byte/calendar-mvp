@@ -24,8 +24,6 @@ type CalendarEvent = {
   color: string;
 };
 
-type AttendanceStatus = "attending" | "not_attending" | "maybe";
-
 type AttendanceSummary = {
   attending: number;
   maybe: number;
