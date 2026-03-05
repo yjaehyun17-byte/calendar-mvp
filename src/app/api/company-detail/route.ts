@@ -6,61 +6,59 @@ type YahooChartResult = {
   indicators: { quote: Array<{ close: (number | null)[] }> };
 };
 
-type NaverFinancialItem = {
-  [key: string]: string | number | null;
-};
+type NaverTitleItem = { isConsensus: string; title: string; key: string };
+type NaverColumnItem = { value: string; cx: string | null };
+type NaverRowItem = { title: string; columns: Record<string, NaverColumnItem> };
+type NaverFinanceInfo = { trTitleList: NaverTitleItem[]; rowList: NaverRowItem[] };
+type NaverFinanceResponse = { financeInfo: NaverFinanceInfo };
 
 async function safeFetch(url: string, extraHeaders?: Record<string, string>) {
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0", ...extraHeaders },
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) return null;
-  return res.json();
-}
-
-function parseNaverNumber(v: string | number | null | undefined): number | null {
-  if (v === null || v === undefined || v === "") return null;
-  if (typeof v === "number") return v;
-  const cleaned = String(v).replace(/,/g, "").trim();
-  if (cleaned === "-" || cleaned === "") return null;
-  const n = Number(cleaned);
-  return isNaN(n) ? null : n;
-}
-
-async function fetchNaverFinancials(ticker: string) {
-  const naverHeaders = { "Referer": "https://m.stock.naver.com/" };
-  const [annualData, quarterData] = await Promise.all([
-    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`, naverHeaders),
-    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`, naverHeaders),
-  ]);
-
-  function parseRows(data: unknown, isQuarter: boolean) {
-    // Handle both array response and { financeInfo: [...] } wrapper
-    let rows: NaverFinancialItem[] = [];
-    if (Array.isArray(data)) {
-      rows = data as NaverFinancialItem[];
-    } else if (data && typeof data === "object") {
-      const obj = data as Record<string, unknown>;
-      const fin = obj.financeInfo ?? obj.finance ?? obj.data;
-      if (Array.isArray(fin)) rows = fin as NaverFinancialItem[];
-    }
-    return rows.map((item) => {
-      const rawPeriod = String(item.stacYymm ?? item.stacYm ?? item.yyyyMm ?? "").replace("/", "-");
-      return {
-        period: isQuarter ? rawPeriod.slice(0, 7) : rawPeriod.slice(0, 4),
-        revenue: parseNaverNumber(item.totRevnu ?? item.saleAmt ?? item.revenue),
-        operatingIncome: parseNaverNumber(item.bsopPrfi ?? item.bsopProfi ?? item.operatingIncome),
-        netIncome: parseNaverNumber(item.thtrNtis ?? item.netProfi ?? item.netIncome),
-        eps: parseNaverNumber(item.eps),
-      };
-    }).filter((r) => r.period);
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0", ...extraHeaders },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
   }
+}
 
-  return {
-    annualFinancials: parseRows(annualData, false),
-    quarterlyFinancials: parseRows(quarterData, true),
-  };
+function parseNaverValue(row: NaverRowItem | undefined, key: string, multiplyOk: number): number | null {
+  if (!row) return null;
+  const col = row.columns[key];
+  if (!col) return null;
+  const v = String(col.value).replace(/,/g, "").trim();
+  if (v === "-" || v === "") return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n * multiplyOk;
+}
+
+function parseNaverFinanceData(data: unknown, onlyConfirmed: boolean) {
+  if (!data || typeof data !== "object") return [];
+  const resp = data as NaverFinanceResponse;
+  const fi = resp.financeInfo;
+  if (!fi?.trTitleList || !fi?.rowList) return [];
+
+  const periods = fi.trTitleList.filter((t) =>
+    onlyConfirmed ? t.isConsensus === "N" : true
+  );
+
+  const findRow = (title: string) => fi.rowList.find((r) => r.title === title);
+  const revenueRow = findRow("매출액");
+  const opIncomeRow = findRow("영업이익");
+  const netIncomeRow = findRow("당기순이익");
+  const epsRow = findRow("EPS");
+
+  return periods.map((p) => ({
+    // Use title as display period (e.g. "2023.12." or "2024.03.")
+    period: p.title.replace(/\.$/, ""),
+    revenue: parseNaverValue(revenueRow, p.key, 100_000_000),
+    operatingIncome: parseNaverValue(opIncomeRow, p.key, 100_000_000),
+    netIncome: parseNaverValue(netIncomeRow, p.key, 100_000_000),
+    eps: parseNaverValue(epsRow, p.key, 1),
+  }));
 }
 
 export async function GET(request: Request) {
@@ -75,13 +73,17 @@ export async function GET(request: Request) {
 
   const suffix = company?.market === "KOSDAQ" ? ".KQ" : ".KS";
   const yahooTicker = `${ticker}${suffix}`;
+  const naverHeaders = { Referer: "https://m.stock.naver.com/" };
 
   const now = Math.floor(Date.now() / 1000);
   const oneYearAgo = now - 365 * 24 * 3600;
 
-  const [chartData, naverFinancials] = await Promise.all([
-    safeFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=1d&period1=${oneYearAgo}&period2=${now}`),
-    fetchNaverFinancials(ticker),
+  const [chartData, annualData, quarterData] = await Promise.all([
+    safeFetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=1d&period1=${oneYearAgo}&period2=${now}`
+    ),
+    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`, naverHeaders),
+    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`, naverHeaders),
   ]);
 
   // Price chart
@@ -108,7 +110,7 @@ export async function GET(request: Request) {
     currentPrice,
     changePct,
     priceHistory,
-    annualFinancials: naverFinancials.annualFinancials,
-    quarterlyFinancials: naverFinancials.quarterlyFinancials,
+    annualFinancials: parseNaverFinanceData(annualData, true),
+    quarterlyFinancials: parseNaverFinanceData(quarterData, true),
   });
 }
