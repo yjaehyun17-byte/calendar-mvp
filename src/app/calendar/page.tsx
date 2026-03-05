@@ -210,44 +210,6 @@ export default function CalendarPage() {
     }));
   }, [events]);
 
-  const userDisplayName = useMemo(() => {
-    if (!user) return "Google 사용자";
-
-    const metadata = user.user_metadata as Record<string, unknown> | undefined;
-    const identities = Array.isArray(user.identities)
-      ? (user.identities as Array<{
-          identity_data?: Record<string, unknown> | null;
-        }>)
-      : [];
-    const identityData = identities
-      .map((identity) => identity.identity_data)
-      .filter(
-        (value): value is Record<string, unknown> =>
-          Boolean(value) && typeof value === "object",
-      );
-
-    const candidateNames = [
-      metadata?.name,
-      metadata?.full_name,
-      metadata?.preferred_username,
-      ...identityData.flatMap((identity) => [
-        identity.name,
-        identity.full_name,
-        identity.given_name,
-        identity.nickname,
-        identity.preferred_username,
-      ]),
-      user.email,
-    ];
-
-    const displayName = candidateNames.find(
-      (value): value is string =>
-        typeof value === "string" && value.trim().length > 0,
-    );
-
-    return displayName ?? "Google 사용자";
-  }, [user]);
-
   const resetForm = () => {
     setForm({
       companyName: "",
