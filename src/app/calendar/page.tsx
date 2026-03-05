@@ -963,7 +963,11 @@ export default function CalendarPage() {
                     companyMarket: "",
                   }));
                 }}
-                placeholder="예: 삼성전자, 카카오"
+                placeholder={
+                  form.companyName && form.companyTicker
+                    ? `${form.companyName} (${form.companyTicker}, ${form.companyMarket})`
+                    : "예: 삼성전자, 카카오"
+                }
                 style={{ width: "100%", padding: "8px", marginTop: "4px" }}
               />
             </label>
