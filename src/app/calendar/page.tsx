@@ -48,6 +48,7 @@ type EventFormState = {
   companyName: string;
   companyTicker: string;
   companyMarket: string;
+  eventType: "탐방" | "컨콜";
   start: string;
   end: string;
   notes: string;
@@ -212,6 +213,7 @@ export default function CalendarPage() {
     companyName: "",
     companyTicker: "",
     companyMarket: "",
+    eventType: "탐방",
     start: "",
     end: "",
     notes: "",
@@ -235,7 +237,12 @@ export default function CalendarPage() {
   const calendarEvents = useMemo<EventInput[]>(() => {
     return events.map((event) => ({
       id: event.id,
-      title: event.title.replace(/\s*\(\d+\.KRX\)$/, ""),
+      title: (() => {
+          const typeMatch = event.title.match(/^\[(탐방|컨콜)\]\s*/);
+          const label = typeMatch ? (typeMatch[1] === "탐방" ? "(탐)" : "(컨)") : "";
+          const company = event.title.replace(/^\[(탐방|컨콜)\]\s*/, "").replace(/\s*\(\d+\.KRX\)$/, "");
+          return `${label}${company}`;
+        })(),
       start: event.start,
       end: event.end ?? undefined,
       backgroundColor: event.color,
@@ -250,6 +257,7 @@ export default function CalendarPage() {
       companyName: "",
       companyTicker: "",
       companyMarket: "",
+      eventType: "탐방",
       start: "",
       end: "",
       notes: "",
@@ -412,6 +420,7 @@ export default function CalendarPage() {
       companyName: "",
       companyTicker: "",
       companyMarket: "",
+      eventType: "탐방",
       start: toDateTimeLocal(suggestedStart),
       end: toDateTimeLocal(end ?? addHours(suggestedStart, 1)),
       notes: "",
@@ -425,8 +434,10 @@ export default function CalendarPage() {
     if (!target) return;
 
     setEditingId(target.id);
-    const companyMatch =
-      target.title.match(/^(.+)\s*\((\d+)\.KRX\)$/) ?? null;
+    const typeMatch = target.title.match(/^\[(탐방|컨콜)\]\s*/);
+    const eventType = (typeMatch?.[1] as "탐방" | "컨콜") ?? "탐방";
+    const titleWithoutType = target.title.replace(/^\[(탐방|컨콜)\]\s*/, "");
+    const companyMatch = titleWithoutType.match(/^(.+)\s*\((\d+)\.KRX\)$/) ?? null;
     const companyName = companyMatch?.[1] ?? "";
     const companyTicker = companyMatch?.[2] ?? "";
 
@@ -434,6 +445,7 @@ export default function CalendarPage() {
       companyName,
       companyTicker,
       companyMarket: companyTicker ? "KRX" : "",
+      eventType,
       start: toDateTimeLocal(target.start),
       end: toDateTimeLocal(target.end),
       notes: stripGoogleFinanceLines(target.notes),
@@ -580,7 +592,7 @@ export default function CalendarPage() {
 
     if (!trimmedCompanyName || !trimmedCompanyTicker || !startIso) return;
 
-    const generatedTitle = `${trimmedCompanyName} (${trimmedCompanyTicker}.KRX)`;
+    const generatedTitle = `[${form.eventType}] ${trimmedCompanyName} (${trimmedCompanyTicker}.KRX)`;
     const generatedNotes = form.notes.trim();
 
     const payload = {
@@ -954,6 +966,30 @@ export default function CalendarPage() {
                 </div>
               </section>
             ) : null}
+
+            <label className="calendar-modal-label">
+              일정 유형 *
+              <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                {(["탐방", "컨콜"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, eventType: type }))}
+                    style={{
+                      flex: 1,
+                      padding: "8px",
+                      borderRadius: "8px",
+                      border: form.eventType === type ? "2px solid #2563eb" : "1px solid #d1d5db",
+                      background: form.eventType === type ? "#eff6ff" : "#fff",
+                      fontWeight: form.eventType === type ? 700 : 400,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </label>
 
             <label className="calendar-modal-label">
               상장사 검색 (KOSPI/KOSDAQ) *
