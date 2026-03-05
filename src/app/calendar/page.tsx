@@ -424,7 +424,7 @@ export default function CalendarPage() {
 
     setEditingId(target.id);
     const companyMatch =
-      target.title.match(/^기업 탐방\s*-\s*(.+)\s*\((\d+)\.KRX\)$/) ?? null;
+      target.title.match(/^(.+)\s*\((\d+)\.KRX\)$/) ?? null;
     const companyName = companyMatch?.[1] ?? "";
     const companyTicker = companyMatch?.[2] ?? "";
 
@@ -578,7 +578,7 @@ export default function CalendarPage() {
 
     if (!trimmedCompanyName || !trimmedCompanyTicker || !startIso) return;
 
-    const generatedTitle = `기업 탐방 - ${trimmedCompanyName} (${trimmedCompanyTicker}.KRX)`;
+    const generatedTitle = `${trimmedCompanyName} (${trimmedCompanyTicker}.KRX)`;
     const generatedNotes = form.notes.trim();
 
     const payload = {
