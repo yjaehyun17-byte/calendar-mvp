@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 type PricePoint = { date: string; close: number };
 type FinancialRow = { period: string; revenue: number | null; operatingIncome: number | null; netIncome: number | null; eps: number | null };
-type EstimateRow = { period: string; label: string; endDate: string | null; epsAvg: number | null; epsLow: number | null; epsHigh: number | null; analysts: number | null; revenueAvg: number | null };
+type EstimateRow = { id: string; ticker: string; period: string; revenue: number | null; operating_income: number | null; net_income: number | null; eps: number | null };
 
 type CompanyDetail = {
   companyName: string;
@@ -15,7 +15,6 @@ type CompanyDetail = {
   priceHistory: PricePoint[];
   annualFinancials: FinancialRow[];
   quarterlyFinancials: FinancialRow[];
-  estimates: EstimateRow[];
 };
 
 function formatKRW(v: number | null): string {
@@ -53,19 +52,14 @@ function PriceChart({ data }: { data: PricePoint[] }) {
   const last = closes[closes.length - 1];
   const color = last >= first ? "#dc2626" : "#2563eb";
 
-  // Show ~4 date labels
   const labelIndices = [0, Math.floor(data.length / 3), Math.floor((data.length * 2) / 3), data.length - 1];
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto" }}>
-      {/* Y axis labels */}
       <text x={PAD.left - 4} y={PAD.top + 6} textAnchor="end" fontSize="9" fill="#6b7280">{max.toLocaleString("ko-KR")}</text>
       <text x={PAD.left - 4} y={H - PAD.bottom} textAnchor="end" fontSize="9" fill="#6b7280">{min.toLocaleString("ko-KR")}</text>
-      {/* Baseline */}
       <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom} stroke="#e5e7eb" strokeWidth="1" />
-      {/* Price line */}
       <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" />
-      {/* X date labels */}
       {labelIndices.map((idx) => (
         <text key={idx} x={x(idx)} y={H - 4} textAnchor="middle" fontSize="8" fill="#9ca3af">
           {data[idx].date.slice(5)}
@@ -76,7 +70,7 @@ function PriceChart({ data }: { data: PricePoint[] }) {
 }
 
 function FinancialsTable({ rows, title }: { rows: FinancialRow[]; title: string }) {
-  if (rows.length === 0) return null;
+  if (rows.length === 0) return <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>데이터 없음</p>;
   return (
     <div>
       <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: "13px" }}>{title}</p>
@@ -108,41 +102,187 @@ function FinancialsTable({ rows, title }: { rows: FinancialRow[]; title: string 
   );
 }
 
-function EstimatesTable({ rows }: { rows: EstimateRow[] }) {
-  if (rows.length === 0) return null;
+const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" };
+const tdStyle: React.CSSProperties = { padding: "6px 8px", color: "#374151", whiteSpace: "nowrap" };
+
+function EstimatesSection({ ticker }: { ticker: string }) {
+  const [rows, setRows] = useState<EstimateRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ period: "", revenue: "", operating_income: "", net_income: "", eps: "" });
+
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/estimates?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" });
+      const data = (await res.json()) as EstimateRow[];
+      setRows(Array.isArray(data) ? data : []);
+    } catch {
+      setRows([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [ticker]);
+
+  const handleSave = async () => {
+    if (!form.period.trim()) return;
+    setSaving(true);
+    try {
+      await fetch("/api/estimates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticker,
+          period: form.period.trim(),
+          revenue: form.revenue ? Number(form.revenue.replace(/,/g, "")) : null,
+          operating_income: form.operating_income ? Number(form.operating_income.replace(/,/g, "")) : null,
+          net_income: form.net_income ? Number(form.net_income.replace(/,/g, "")) : null,
+          eps: form.eps ? Number(form.eps.replace(/,/g, "")) : null,
+        }),
+      });
+      setForm({ period: "", revenue: "", operating_income: "", net_income: "", eps: "" });
+      setShowForm(false);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/estimates?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    await load();
+  };
+
   return (
     <div>
-      <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: "13px" }}>실적 추정치</p>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
-          <thead>
-            <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-              <th style={thStyle}>기간</th>
-              <th style={thStyle}>매출 추정</th>
-              <th style={thStyle}>EPS 추정</th>
-              <th style={thStyle}>EPS 범위</th>
-              <th style={thStyle}>애널리스트</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.period} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                <td style={tdStyle}><span style={{ fontWeight: 600 }}>{r.label}</span>{r.endDate && <span style={{ color: "#9ca3af", marginLeft: 4 }}>({r.endDate.slice(0, 7)})</span>}</td>
-                <td style={tdStyle}>{formatKRW(r.revenueAvg)}</td>
-                <td style={{ ...tdStyle, fontWeight: 600 }}>{formatEPS(r.epsAvg)}</td>
-                <td style={{ ...tdStyle, color: "#6b7280" }}>{r.epsLow !== null && r.epsHigh !== null ? `${formatEPS(r.epsLow)} ~ ${formatEPS(r.epsHigh)}` : "-"}</td>
-                <td style={tdStyle}>{r.analysts ?? "-"}명</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>실적 추정치</p>
+        <button
+          type="button"
+          onClick={() => setShowForm((v) => !v)}
+          style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", color: "#374151" }}
+        >
+          {showForm ? "취소" : "+ 추가"}
+        </button>
       </div>
+
+      {showForm && (
+        <div style={{ background: "#f9fafb", borderRadius: "8px", padding: "10px", marginBottom: "8px", display: "grid", gap: "6px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+            <div>
+              <label style={{ fontSize: "11px", color: "#6b7280" }}>기간 (예: 2025, 2025-Q1)</label>
+              <input
+                value={form.period}
+                onChange={(e) => setForm((f) => ({ ...f, period: e.target.value }))}
+                placeholder="2025"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: "11px", color: "#6b7280" }}>EPS (원)</label>
+              <input
+                value={form.eps}
+                onChange={(e) => setForm((f) => ({ ...f, eps: e.target.value }))}
+                placeholder="1234"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
+            <div>
+              <label style={{ fontSize: "11px", color: "#6b7280" }}>매출 (억)</label>
+              <input
+                value={form.revenue}
+                onChange={(e) => setForm((f) => ({ ...f, revenue: e.target.value }))}
+                placeholder="100000000"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: "11px", color: "#6b7280" }}>영업이익 (억)</label>
+              <input
+                value={form.operating_income}
+                onChange={(e) => setForm((f) => ({ ...f, operating_income: e.target.value }))}
+                placeholder="10000000"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: "11px", color: "#6b7280" }}>순이익 (억)</label>
+              <input
+                value={form.net_income}
+                onChange={(e) => setForm((f) => ({ ...f, net_income: e.target.value }))}
+                placeholder="8000000"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving || !form.period.trim()}
+            style={{ padding: "5px 12px", borderRadius: "6px", border: "none", background: "#2563eb", color: "#fff", fontSize: "12px", cursor: "pointer", fontWeight: 600, opacity: saving ? 0.6 : 1 }}
+          >
+            {saving ? "저장 중..." : "저장"}
+          </button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>불러오는 중...</p>
+      ) : rows.length === 0 ? (
+        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>추정치 없음</p>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+            <thead>
+              <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                <th style={thStyle}>기간</th>
+                <th style={thStyle}>매출</th>
+                <th style={thStyle}>영업이익</th>
+                <th style={thStyle}>순이익</th>
+                <th style={thStyle}>EPS</th>
+                <th style={thStyle}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                  <td style={tdStyle}>{r.period}</td>
+                  <td style={tdStyle}>{formatKRW(r.revenue)}</td>
+                  <td style={{ ...tdStyle, color: r.operating_income !== null ? (r.operating_income >= 0 ? "#dc2626" : "#2563eb") : "#6b7280" }}>{formatKRW(r.operating_income)}</td>
+                  <td style={{ ...tdStyle, color: r.net_income !== null ? (r.net_income >= 0 ? "#dc2626" : "#2563eb") : "#6b7280" }}>{formatKRW(r.net_income)}</td>
+                  <td style={tdStyle}>{formatEPS(r.eps)}</td>
+                  <td style={{ padding: "6px 4px" }}>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(r.id)}
+                      style={{ fontSize: "10px", color: "#9ca3af", border: "none", background: "none", cursor: "pointer", padding: 0 }}
+                    >
+                      삭제
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
 
-const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" };
-const tdStyle: React.CSSProperties = { padding: "6px 8px", color: "#374151", whiteSpace: "nowrap" };
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "4px 6px",
+  fontSize: "12px",
+  border: "1px solid #d1d5db",
+  borderRadius: "4px",
+  boxSizing: "border-box",
+};
 
 export default function CompanyPanel({ ticker, onClose }: { ticker: string; onClose: () => void }) {
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
@@ -224,7 +364,7 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
           </div>
 
           {/* 추정치 */}
-          <EstimatesTable rows={detail.estimates} />
+          <EstimatesSection ticker={ticker} />
         </>
       )}
     </div>

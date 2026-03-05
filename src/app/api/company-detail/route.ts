@@ -6,28 +6,55 @@ type YahooChartResult = {
   indicators: { quote: Array<{ close: (number | null)[] }> };
 };
 
-type IncomeStatement = {
-  endDate: { fmt: string };
-  totalRevenue?: { raw: number };
-  operatingIncome?: { raw: number };
-  netIncome?: { raw: number };
-  basicEPS?: { raw: number };
-};
-
-type EarningsTrend = {
-  period: string;
-  endDate?: { fmt: string };
-  earningsEstimate?: { avg?: { raw: number }; low?: { raw: number }; high?: { raw: number }; numberOfAnalysts?: { raw: number } };
-  revenueEstimate?: { avg?: { raw: number }; low?: { raw: number }; high?: { raw: number } };
+type NaverFinancialItem = {
+  [key: string]: string | number | null;
 };
 
 async function safeFetch(url: string) {
   const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0" },
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Referer": "https://m.stock.naver.com/",
+    },
     signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) return null;
   return res.json();
+}
+
+function parseNaverNumber(v: string | number | null | undefined): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return v;
+  const cleaned = String(v).replace(/,/g, "").trim();
+  if (cleaned === "-" || cleaned === "") return null;
+  const n = Number(cleaned);
+  return isNaN(n) ? null : n;
+}
+
+async function fetchNaverFinancials(ticker: string) {
+  const [annualData, quarterData] = await Promise.all([
+    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`),
+    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`),
+  ]);
+
+  function parseRows(data: { financeInfo?: NaverFinancialItem[] } | null, isQuarter: boolean) {
+    if (!data?.financeInfo) return [];
+    return data.financeInfo.map((item) => {
+      const period = String(item.stacYymm ?? item.stacYm ?? "").replace("/", "-");
+      return {
+        period: isQuarter ? period.slice(0, 7) : period.slice(0, 4),
+        revenue: parseNaverNumber(item.totRevnu ?? item.saleAmt),
+        operatingIncome: parseNaverNumber(item.bsopPrfi ?? item.bsopProfi),
+        netIncome: parseNaverNumber(item.thtrNtis ?? item.netProfi),
+        eps: parseNaverNumber(item.eps),
+      };
+    }).filter((r) => r.period);
+  }
+
+  return {
+    annualFinancials: parseRows(annualData as { financeInfo?: NaverFinancialItem[] } | null, false),
+    quarterlyFinancials: parseRows(quarterData as { financeInfo?: NaverFinancialItem[] } | null, true),
+  };
 }
 
 export async function GET(request: Request) {
@@ -46,9 +73,9 @@ export async function GET(request: Request) {
   const now = Math.floor(Date.now() / 1000);
   const oneYearAgo = now - 365 * 24 * 3600;
 
-  const [chartData, summaryData] = await Promise.all([
+  const [chartData, naverFinancials] = await Promise.all([
     safeFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=1d&period1=${oneYearAgo}&period2=${now}`),
-    safeFetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${yahooTicker}?modules=incomeStatementHistory,incomeStatementHistoryQuarterly,earningsTrends`),
+    fetchNaverFinancials(ticker),
   ]);
 
   // Price chart
@@ -64,44 +91,6 @@ export async function GET(request: Request) {
     });
   }
 
-  // Annual financials
-  const annualRaw: IncomeStatement[] =
-    summaryData?.quoteSummary?.result?.[0]?.incomeStatementHistory?.incomeStatementHistory ?? [];
-  const annualFinancials = annualRaw.map((s) => ({
-    period: s.endDate.fmt.slice(0, 4),
-    revenue: s.totalRevenue?.raw ?? null,
-    operatingIncome: s.operatingIncome?.raw ?? null,
-    netIncome: s.netIncome?.raw ?? null,
-    eps: s.basicEPS?.raw ?? null,
-  })).reverse();
-
-  // Quarterly financials
-  const quarterlyRaw: IncomeStatement[] =
-    summaryData?.quoteSummary?.result?.[0]?.incomeStatementHistoryQuarterly?.incomeStatementHistory ?? [];
-  const quarterlyFinancials = quarterlyRaw.map((s) => ({
-    period: s.endDate.fmt.slice(0, 7),
-    revenue: s.totalRevenue?.raw ?? null,
-    operatingIncome: s.operatingIncome?.raw ?? null,
-    netIncome: s.netIncome?.raw ?? null,
-    eps: s.basicEPS?.raw ?? null,
-  })).reverse();
-
-  // Estimates
-  const trendsRaw: EarningsTrend[] =
-    summaryData?.quoteSummary?.result?.[0]?.earningsTrends?.trend ?? [];
-  const estimates = trendsRaw
-    .filter((t) => ["0q", "+1q", "0y", "+1y"].includes(t.period))
-    .map((t) => ({
-      period: t.period,
-      label: { "0q": "당분기", "+1q": "다음분기", "0y": "당해연도", "+1y": "내년도" }[t.period] ?? t.period,
-      endDate: t.endDate?.fmt ?? null,
-      epsAvg: t.earningsEstimate?.avg?.raw ?? null,
-      epsLow: t.earningsEstimate?.low?.raw ?? null,
-      epsHigh: t.earningsEstimate?.high?.raw ?? null,
-      analysts: t.earningsEstimate?.numberOfAnalysts?.raw ?? null,
-      revenueAvg: t.revenueEstimate?.avg?.raw ?? null,
-    }));
-
   const currentPrice = priceHistory.at(-1)?.close ?? null;
   const prevPrice = priceHistory.at(-2)?.close ?? null;
   const changePct = currentPrice && prevPrice ? ((currentPrice - prevPrice) / prevPrice) * 100 : null;
@@ -113,8 +102,7 @@ export async function GET(request: Request) {
     currentPrice,
     changePct,
     priceHistory,
-    annualFinancials,
-    quarterlyFinancials,
-    estimates,
+    annualFinancials: naverFinancials.annualFinancials,
+    quarterlyFinancials: naverFinancials.quarterlyFinancials,
   });
 }
