@@ -16,9 +16,11 @@ Supabase 기반 일정 관리 MVP입니다. Google OAuth 로그인 후 일정을
 아래 SQL 파일을 Supabase SQL Editor에서 먼저 실행하세요.
 
 - `docs/sql/companies_krx.sql`
+- `docs/sql/event_attendance.sql` (팀원 참석 여부 기능 사용 시)
 
 생성 테이블:
 - `companies_krx(ticker PK, name_kr, market, isin, corp_name, base_date, updated_at)`
+- `event_attendance(event_id + user_id PK, status, user_name, user_email, updated_at)`
 - `name_kr` 인덱스 + `pg_trgm` GIN 인덱스
 
 > 참고: 동기화 upsert는 **service role key**를 사용하므로 서버에서 RLS 우회가 가능합니다.
