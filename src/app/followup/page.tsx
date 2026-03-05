@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type FollowupItem = {
   id: string;
@@ -13,6 +13,18 @@ type FollowupItem = {
   currentPrice: number | null;
   returnPct: number | null;
 };
+
+type SortKey = keyof Pick<FollowupItem, "companyName" | "eventDate" | "daysAgo" | "priceAtEvent" | "currentPrice" | "returnPct">;
+type SortDir = "asc" | "desc";
+
+const COLUMNS: { label: string; key: SortKey }[] = [
+  { label: "기업명", key: "companyName" },
+  { label: "방문일", key: "eventDate" },
+  { label: "경과일", key: "daysAgo" },
+  { label: "방문시 주가", key: "priceAtEvent" },
+  { label: "현재 주가", key: "currentPrice" },
+  { label: "수익률", key: "returnPct" },
+];
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -33,6 +45,8 @@ function formatReturn(ret: number | null) {
 export default function FollowupPage() {
   const [items, setItems] = useState<FollowupItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey>("eventDate");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +62,32 @@ export default function FollowupPage() {
     };
     void load();
   }, []);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const aVal = a[sortKey];
+      const bVal = b[sortKey];
+      if (aVal === null && bVal === null) return 0;
+      if (aVal === null) return 1;
+      if (bVal === null) return -1;
+      let cmp = 0;
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        cmp = aVal.localeCompare(bVal, "ko");
+      } else {
+        cmp = (aVal as number) < (bVal as number) ? -1 : (aVal as number) > (bVal as number) ? 1 : 0;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [items, sortKey, sortDir]);
 
   return (
     <main style={{ padding: "24px" }}>
@@ -68,39 +108,47 @@ export default function FollowupPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
                 <thead>
                   <tr style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
-                    {["기업명", "방문일", "경과일", "방문시 주가", "현재 주가", "수익률"].map((col) => (
-                      <th
-                        key={col}
-                        style={{
-                          padding: "10px 14px",
-                          textAlign: "left",
-                          fontWeight: 600,
-                          color: "#374151",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {col}
-                      </th>
-                    ))}
+                    {COLUMNS.map(({ label, key }) => {
+                      const isActive = sortKey === key;
+                      const arrow = isActive ? (sortDir === "asc" ? " ▲" : " ▼") : " ↕";
+                      return (
+                        <th
+                          key={key}
+                          onClick={() => handleSort(key)}
+                          style={{
+                            padding: "10px 14px",
+                            textAlign: "left",
+                            fontWeight: 600,
+                            color: isActive ? "#2563eb" : "#374151",
+                            whiteSpace: "nowrap",
+                            cursor: "pointer",
+                            userSelect: "none",
+                          }}
+                        >
+                          {label}
+                          <span style={{ fontSize: "11px", opacity: isActive ? 1 : 0.4 }}>{arrow}</span>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => {
-                      const ret = item.returnPct;
-                      const retColor = ret === null ? "#6b7280" : ret >= 0 ? "#dc2626" : "#2563eb";
-                      return (
-                        <tr key={item.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                          <td style={{ padding: "10px 14px", fontWeight: 600 }}>{item.companyName}</td>
-                          <td style={{ padding: "10px 14px", color: "#374151" }}>{formatDate(item.eventDate)}</td>
-                          <td style={{ padding: "10px 14px", color: "#374151" }}>
-                            {item.daysAgo >= 0 ? `D+${item.daysAgo}` : `D${item.daysAgo}`}
-                          </td>
-                          <td style={{ padding: "10px 14px", color: "#374151" }}>{formatPrice(item.priceAtEvent)}</td>
-                          <td style={{ padding: "10px 14px", color: "#374151" }}>{formatPrice(item.currentPrice)}</td>
-                          <td style={{ padding: "10px 14px", fontWeight: 700, color: retColor }}>{formatReturn(ret)}</td>
-                        </tr>
-                      );
-                    })}
+                  {sorted.map((item) => {
+                    const ret = item.returnPct;
+                    const retColor = ret === null ? "#6b7280" : ret >= 0 ? "#dc2626" : "#2563eb";
+                    return (
+                      <tr key={item.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                        <td style={{ padding: "10px 14px", fontWeight: 600 }}>{item.companyName}</td>
+                        <td style={{ padding: "10px 14px", color: "#374151" }}>{formatDate(item.eventDate)}</td>
+                        <td style={{ padding: "10px 14px", color: "#374151" }}>
+                          {item.daysAgo >= 0 ? `D+${item.daysAgo}` : `D${item.daysAgo}`}
+                        </td>
+                        <td style={{ padding: "10px 14px", color: "#374151" }}>{formatPrice(item.priceAtEvent)}</td>
+                        <td style={{ padding: "10px 14px", color: "#374151" }}>{formatPrice(item.currentPrice)}</td>
+                        <td style={{ padding: "10px 14px", fontWeight: 700, color: retColor }}>{formatReturn(ret)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
