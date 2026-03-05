@@ -235,7 +235,7 @@ export default function CalendarPage() {
   const calendarEvents = useMemo<EventInput[]>(() => {
     return events.map((event) => ({
       id: event.id,
-      title: event.title,
+      title: event.title.replace(/\s*\(\d+\.KRX\)$/, ""),
       start: event.start,
       end: event.end ?? undefined,
       backgroundColor: event.color,
