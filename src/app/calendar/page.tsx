@@ -225,6 +225,7 @@ export default function CalendarPage() {
     [],
   );
   const [isCompanyLoading, setIsCompanyLoading] = useState(false);
+  const [isCompanySearchFocused, setIsCompanySearchFocused] = useState(false);
   const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary>({
     attending: 0,
     maybe: 0,
@@ -265,6 +266,7 @@ export default function CalendarPage() {
     setEditingId(null);
     setCompanyQuery("");
     setCompanyResults([]);
+    setIsCompanySearchFocused(false);
     setAttendanceSummary({ attending: 0, maybe: 0, not_attending: 0 });
     setMyAttendance(null);
     setIsAttendanceLoading(false);
@@ -458,7 +460,7 @@ export default function CalendarPage() {
   useEffect(() => {
     const trimmedQuery = companyQuery.trim();
 
-    if (trimmedQuery.length < 2) {
+    if (trimmedQuery.length < 2 || !isCompanySearchFocused) {
       setCompanyResults([]);
       setIsCompanyLoading(false);
       return;
@@ -495,7 +497,7 @@ export default function CalendarPage() {
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [companyQuery]);
+  }, [companyQuery, isCompanySearchFocused]);
 
   const handleSelectCompany = (company: CompanySearchResult) => {
     setForm((prev) => ({
@@ -935,6 +937,8 @@ export default function CalendarPage() {
                     : "예: 삼성전자, 카카오"
                 }
                 style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+                onFocus={() => setIsCompanySearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsCompanySearchFocused(false), 150)}
               />
             </label>
 
