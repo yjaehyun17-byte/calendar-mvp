@@ -802,6 +802,14 @@ export default function CalendarPage() {
           week: "주",
           day: "일",
         }}
+        eventTimeFormat={(time) => {
+          const h = time.date.marker.getUTCHours();
+          const m = time.date.marker.getUTCMinutes();
+          const isPM = h >= 12;
+          const h12 = h % 12 || 12;
+          const prefix = isPM ? "오후" : "오전";
+          return m === 0 ? `${prefix}${h12}` : `${prefix}${h12}:${String(m).padStart(2, "0")}`;
+        }}
         selectable
         editable
         selectMirror
