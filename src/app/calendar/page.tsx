@@ -32,9 +32,16 @@ type AttendanceSummary = {
   not_attending: number;
 };
 
+type AttendanceMember = {
+  userId: string;
+  userName: string;
+  userEmail: string | null;
+};
+
 type AttendanceApiResponse = {
   myStatus: AttendanceStatus | null;
   summary: AttendanceSummary;
+  attendees: AttendanceMember[];
 };
 
 type EventFormState = {
@@ -223,6 +230,7 @@ export default function CalendarPage() {
   const [myAttendance, setMyAttendance] = useState<AttendanceStatus | null>(null);
   const [isAttendanceLoading, setIsAttendanceLoading] = useState(false);
   const [isAttendanceSaving, setIsAttendanceSaving] = useState(false);
+  const [attendanceMembers, setAttendanceMembers] = useState<AttendanceMember[]>([]);
 
   const calendarEvents = useMemo<EventInput[]>(() => {
     return events.map((event) => ({
@@ -254,6 +262,7 @@ export default function CalendarPage() {
     setMyAttendance(null);
     setIsAttendanceLoading(false);
     setIsAttendanceSaving(false);
+    setAttendanceMembers([]);
   };
 
   const closeModal = () => {
@@ -506,16 +515,18 @@ export default function CalendarPage() {
       const data = (await response.json()) as AttendanceApiResponse;
       setAttendanceSummary(data.summary);
       setMyAttendance(data.myStatus);
+      setAttendanceMembers(data.attendees ?? []);
     } catch (error) {
       console.error(error);
       setAttendanceSummary({ attending: 0, maybe: 0, not_attending: 0 });
       setMyAttendance(null);
+      setAttendanceMembers([]);
     } finally {
       setIsAttendanceLoading(false);
     }
   };
 
-  const handleAttendanceSelect = async (status: AttendanceStatus) => {
+  const handleAttendanceSelect = async (action: "attend" | "cancel") => {
     if (!editingId || !user?.id) return;
 
     setIsAttendanceSaving(true);
@@ -528,7 +539,7 @@ export default function CalendarPage() {
           userId: user.id,
           userName: getDisplayName(user),
           userEmail: user.email ?? null,
-          status,
+          action,
         }),
       });
 
@@ -539,6 +550,7 @@ export default function CalendarPage() {
       const data = (await response.json()) as AttendanceApiResponse;
       setAttendanceSummary(data.summary);
       setMyAttendance(data.myStatus);
+      setAttendanceMembers(data.attendees ?? []);
     } catch (error) {
       console.error(error);
       alert("참석 여부 저장에 실패했습니다.");
@@ -847,44 +859,90 @@ export default function CalendarPage() {
                   borderRadius: "8px",
                   padding: "10px",
                   display: "grid",
-                  gap: "8px",
+                  gap: "10px",
                 }}
               >
-                <strong style={{ fontSize: "14px" }}>팀 참석 여부</strong>
-                <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
-                  참석 {attendanceSummary.attending}명 · 보류 {attendanceSummary.maybe}명 · 불참 {attendanceSummary.not_attending}명
-                </p>
-                {isAttendanceLoading ? (
-                  <p style={{ margin: 0, fontSize: "13px" }}>참석 정보를 불러오는 중...</p>
-                ) : null}
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {[
-                    { value: "attending", label: "참석" },
-                    { value: "maybe", label: "보류" },
-                    { value: "not_attending", label: "불참" },
-                  ].map((option) => {
-                    const isActive = myAttendance === option.value;
-                    return (
+                <strong style={{ fontSize: "14px" }}>팀 참석</strong>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "10px",
+                    alignItems: "start",
+                  }}
+                >
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
+                      현재 참석자 {attendanceSummary.attending}명
+                    </p>
+                    {isAttendanceLoading ? (
+                      <p style={{ margin: 0, fontSize: "13px" }}>참석 정보를 불러오는 중...</p>
+                    ) : null}
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                       <button
-                        key={option.value}
                         type="button"
-                        disabled={isAttendanceSaving}
-                        onClick={() =>
-                          handleAttendanceSelect(option.value as AttendanceStatus)
-                        }
+                        disabled={isAttendanceSaving || myAttendance === "attending"}
+                        onClick={() => handleAttendanceSelect("attend")}
                         style={{
-                          border: isActive ? "1px solid #2563eb" : "1px solid #d1d5db",
-                          background: isActive ? "#dbeafe" : "#fff",
+                          border: "1px solid #2563eb",
+                          background: myAttendance === "attending" ? "#bfdbfe" : "#2563eb",
+                          color: myAttendance === "attending" ? "#1e3a8a" : "#ffffff",
                           borderRadius: "8px",
                           padding: "6px 10px",
-                          cursor: isAttendanceSaving ? "not-allowed" : "pointer",
-                          fontWeight: isActive ? 700 : 500,
+                          cursor:
+                            isAttendanceSaving || myAttendance === "attending"
+                              ? "not-allowed"
+                              : "pointer",
+                          fontWeight: 700,
                         }}
                       >
-                        {option.label}
+                        참석하기
                       </button>
-                    );
-                  })}
+                      <button
+                        type="button"
+                        disabled={isAttendanceSaving || myAttendance !== "attending"}
+                        onClick={() => handleAttendanceSelect("cancel")}
+                        style={{
+                          border: "1px solid #d97706",
+                          background: myAttendance === "attending" ? "#ffedd5" : "#ffffff",
+                          color: "#9a3412",
+                          borderRadius: "8px",
+                          padding: "6px 10px",
+                          cursor:
+                            isAttendanceSaving || myAttendance !== "attending"
+                              ? "not-allowed"
+                              : "pointer",
+                          fontWeight: 600,
+                        }}
+                      >
+                        참석 취소
+                      </button>
+                    </div>
+                  </div>
+
+                  <aside
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      padding: "8px",
+                      background: "#f9fafb",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>
+                      참석자 명단
+                    </p>
+                    <ul style={{ margin: "8px 0 0", paddingLeft: "18px", fontSize: "13px" }}>
+                      {attendanceMembers.length > 0 ? (
+                        attendanceMembers.map((member) => (
+                          <li key={member.userId}>
+                            {member.userName}
+                          </li>
+                        ))
+                      ) : (
+                        <li style={{ color: "#6b7280" }}>아직 참석자가 없습니다.</li>
+                      )}
+                    </ul>
+                  </aside>
                 </div>
               </section>
             ) : null}

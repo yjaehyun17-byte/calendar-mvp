@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { getServerSupabaseClient } from "@/lib/serverSupabase";
 
 type AttendanceStatus = "attending" | "maybe" | "not_attending";
 
@@ -15,14 +15,28 @@ type AttendancePayload = {
   userId?: string;
   userName?: string | null;
   userEmail?: string | null;
-  status?: AttendanceStatus;
+  action?: "attend" | "cancel";
 };
 
+function getApiClient() {
+  const client = getServerSupabaseClient();
+
+  if (!client) {
+    throw new Error("Supabase server environment variables are missing.");
+  }
+
+  return client;
+}
+
 async function getAttendanceRows(eventId: string) {
+  const supabase = getApiClient();
+
   const { data, error } = await supabase
     .from("event_attendance")
     .select("event_id,user_id,user_name,user_email,status")
-    .eq("event_id", eventId);
+    .eq("event_id", eventId)
+    .eq("status", "attending")
+    .order("updated_at", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
@@ -31,11 +45,21 @@ async function getAttendanceRows(eventId: string) {
   return (data ?? []) as AttendanceRow[];
 }
 
-function toSummary(rows: AttendanceRow[]) {
+function toApiPayload(rows: AttendanceRow[], userId: string | null) {
+  const attendees = rows.map((row) => ({
+    userId: row.user_id,
+    userName: row.user_name || row.user_email || row.user_id,
+    userEmail: row.user_email,
+  }));
+
   return {
-    attending: rows.filter((row) => row.status === "attending").length,
-    maybe: rows.filter((row) => row.status === "maybe").length,
-    not_attending: rows.filter((row) => row.status === "not_attending").length,
+    myStatus: userId && rows.some((row) => row.user_id === userId) ? "attending" : null,
+    summary: {
+      attending: rows.length,
+      maybe: 0,
+      not_attending: 0,
+    },
+    attendees,
   };
 }
 
@@ -45,18 +69,11 @@ export async function GET(
 ) {
   const { id } = await params;
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId")?.trim();
+  const userId = searchParams.get("userId")?.trim() || null;
 
   try {
     const rows = await getAttendanceRows(id);
-    const myStatus = userId
-      ? rows.find((row) => row.user_id === userId)?.status ?? null
-      : null;
-
-    return NextResponse.json({
-      myStatus,
-      summary: toSummary(rows),
-    });
+    return NextResponse.json(toApiPayload(rows, userId));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -71,46 +88,57 @@ export async function PUT(
   const body = (await request.json()) as AttendancePayload;
 
   const userId = body.userId?.trim();
-  const status = body.status;
+  const action = body.action;
 
-  if (!userId || !status) {
+  if (!userId || !action) {
     return NextResponse.json(
-      { error: "userId and status are required." },
+      { error: "userId and action are required." },
       { status: 400 },
     );
   }
 
-  if (!["attending", "maybe", "not_attending"].includes(status)) {
-    return NextResponse.json({ error: "Invalid status." }, { status: 400 });
-  }
-
-  const { error } = await supabase.from("event_attendance").upsert(
-    {
-      event_id: id,
-      user_id: userId,
-      user_name: body.userName?.trim() || null,
-      user_email: body.userEmail?.trim() || null,
-      status,
-    },
-    {
-      onConflict: "event_id,user_id",
-    },
-  );
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!["attend", "cancel"].includes(action)) {
+    return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   }
 
   try {
-    const rows = await getAttendanceRows(id);
+    const supabase = getApiClient();
 
-    return NextResponse.json({
-      myStatus: rows.find((row) => row.user_id === userId)?.status ?? null,
-      summary: toSummary(rows),
-    });
-  } catch (summaryError) {
-    const message =
-      summaryError instanceof Error ? summaryError.message : "Unknown error";
+    if (action === "attend") {
+      const { error } = await supabase.from("event_attendance").upsert(
+        {
+          event_id: id,
+          user_id: userId,
+          user_name: body.userName?.trim() || null,
+          user_email: body.userEmail?.trim() || null,
+          status: "attending",
+        },
+        {
+          onConflict: "event_id,user_id",
+        },
+      );
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
+
+    if (action === "cancel") {
+      const { error } = await supabase
+        .from("event_attendance")
+        .delete()
+        .eq("event_id", id)
+        .eq("user_id", userId);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
+
+    const rows = await getAttendanceRows(id);
+    return NextResponse.json(toApiPayload(rows, userId));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
