@@ -24,11 +24,23 @@ type CalendarEvent = {
   color: string;
 };
 
+type AttendanceStatus = "attending" | "not_attending" | "maybe";
+
+type AttendanceSummary = {
+  attending: number;
+  maybe: number;
+  not_attending: number;
+};
+
+type AttendanceApiResponse = {
+  myStatus: AttendanceStatus | null;
+  summary: AttendanceSummary;
+};
+
 type EventFormState = {
   companyName: string;
   companyTicker: string;
   companyMarket: string;
-  companyFinanceUrl: string;
   start: string;
   end: string;
   notes: string;
@@ -129,6 +141,14 @@ function pickFirstText(values: Array<unknown>): string | null {
   return null;
 }
 
+function stripGoogleFinanceLines(notes: string): string {
+  return notes
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("Google Finance:"))
+    .join("\n")
+    .trim();
+}
+
 function getDisplayName(user: User | null): string {
   if (!user) return "";
 
@@ -185,7 +205,6 @@ export default function CalendarPage() {
     companyName: "",
     companyTicker: "",
     companyMarket: "",
-    companyFinanceUrl: "",
     start: "",
     end: "",
     notes: "",
@@ -196,6 +215,14 @@ export default function CalendarPage() {
     [],
   );
   const [isCompanyLoading, setIsCompanyLoading] = useState(false);
+  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary>({
+    attending: 0,
+    maybe: 0,
+    not_attending: 0,
+  });
+  const [myAttendance, setMyAttendance] = useState<AttendanceStatus | null>(null);
+  const [isAttendanceLoading, setIsAttendanceLoading] = useState(false);
+  const [isAttendanceSaving, setIsAttendanceSaving] = useState(false);
 
   const calendarEvents = useMemo<EventInput[]>(() => {
     return events.map((event) => ({
@@ -215,7 +242,6 @@ export default function CalendarPage() {
       companyName: "",
       companyTicker: "",
       companyMarket: "",
-      companyFinanceUrl: "",
       start: "",
       end: "",
       notes: "",
@@ -224,6 +250,10 @@ export default function CalendarPage() {
     setEditingId(null);
     setCompanyQuery("");
     setCompanyResults([]);
+    setAttendanceSummary({ attending: 0, maybe: 0, not_attending: 0 });
+    setMyAttendance(null);
+    setIsAttendanceLoading(false);
+    setIsAttendanceSaving(false);
   };
 
   const closeModal = () => {
@@ -373,7 +403,6 @@ export default function CalendarPage() {
       companyName: "",
       companyTicker: "",
       companyMarket: "",
-      companyFinanceUrl: "",
       start: toDateTimeLocal(suggestedStart),
       end: toDateTimeLocal(end ?? addHours(suggestedStart, 1)),
       notes: "",
@@ -396,16 +425,14 @@ export default function CalendarPage() {
       companyName,
       companyTicker,
       companyMarket: companyTicker ? "KRX" : "",
-      companyFinanceUrl: companyTicker
-        ? `https://www.google.com/finance/quote/${companyTicker}:KRX`
-        : "",
       start: toDateTimeLocal(target.start),
       end: toDateTimeLocal(target.end),
-      notes: target.notes,
+      notes: stripGoogleFinanceLines(target.notes),
       color: target.color || DEFAULT_COLOR,
     });
     setCompanyQuery(companyName);
     setIsModalOpen(true);
+    void loadAttendance(target.id);
   };
 
   useEffect(() => {
@@ -456,10 +483,68 @@ export default function CalendarPage() {
       companyName: company.name_kr,
       companyTicker: company.ticker,
       companyMarket: company.market ?? "KRX",
-      companyFinanceUrl: `https://www.google.com/finance/quote/${company.ticker}:KRX`,
     }));
     setCompanyQuery(company.name_kr);
     setCompanyResults([]);
+  };
+
+  const loadAttendance = async (eventId: string) => {
+    if (!user?.id) return;
+
+    setIsAttendanceLoading(true);
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/attendance?userId=${encodeURIComponent(user.id)}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load attendance");
+      }
+
+      const data = (await response.json()) as AttendanceApiResponse;
+      setAttendanceSummary(data.summary);
+      setMyAttendance(data.myStatus);
+    } catch (error) {
+      console.error(error);
+      setAttendanceSummary({ attending: 0, maybe: 0, not_attending: 0 });
+      setMyAttendance(null);
+    } finally {
+      setIsAttendanceLoading(false);
+    }
+  };
+
+  const handleAttendanceSelect = async (status: AttendanceStatus) => {
+    if (!editingId || !user?.id) return;
+
+    setIsAttendanceSaving(true);
+
+    try {
+      const response = await fetch(`/api/events/${editingId}/attendance`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          userName: getDisplayName(user),
+          userEmail: user.email ?? null,
+          status,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update attendance");
+      }
+
+      const data = (await response.json()) as AttendanceApiResponse;
+      setAttendanceSummary(data.summary);
+      setMyAttendance(data.myStatus);
+    } catch (error) {
+      console.error(error);
+      alert("참석 여부 저장에 실패했습니다.");
+    } finally {
+      setIsAttendanceSaving(false);
+    }
   };
 
   const handleDateClick = (info: { date: Date }) => {
@@ -484,14 +569,7 @@ export default function CalendarPage() {
     if (!trimmedCompanyName || !trimmedCompanyTicker || !startIso) return;
 
     const generatedTitle = `기업 탐방 - ${trimmedCompanyName} (${trimmedCompanyTicker}.KRX)`;
-    const generatedNotes = [
-      form.companyFinanceUrl
-        ? `Google Finance: ${form.companyFinanceUrl}`
-        : undefined,
-      form.notes.trim(),
-    ]
-      .filter((value): value is string => Boolean(value && value.trim()))
-      .join("\n");
+    const generatedNotes = form.notes.trim();
 
     const payload = {
       title: generatedTitle,
@@ -762,6 +840,55 @@ export default function CalendarPage() {
               {editingId ? "기업 탐방 일정 수정" : "기업 탐방 일정 추가"}
             </h2>
 
+            {editingId ? (
+              <section
+                style={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "10px",
+                  display: "grid",
+                  gap: "8px",
+                }}
+              >
+                <strong style={{ fontSize: "14px" }}>팀 참석 여부</strong>
+                <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>
+                  참석 {attendanceSummary.attending}명 · 보류 {attendanceSummary.maybe}명 · 불참 {attendanceSummary.not_attending}명
+                </p>
+                {isAttendanceLoading ? (
+                  <p style={{ margin: 0, fontSize: "13px" }}>참석 정보를 불러오는 중...</p>
+                ) : null}
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {[
+                    { value: "attending", label: "참석" },
+                    { value: "maybe", label: "보류" },
+                    { value: "not_attending", label: "불참" },
+                  ].map((option) => {
+                    const isActive = myAttendance === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        disabled={isAttendanceSaving}
+                        onClick={() =>
+                          handleAttendanceSelect(option.value as AttendanceStatus)
+                        }
+                        style={{
+                          border: isActive ? "1px solid #2563eb" : "1px solid #d1d5db",
+                          background: isActive ? "#dbeafe" : "#fff",
+                          borderRadius: "8px",
+                          padding: "6px 10px",
+                          cursor: isAttendanceSaving ? "not-allowed" : "pointer",
+                          fontWeight: isActive ? 700 : 500,
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
             <label className="calendar-modal-label">
               상장사 검색 (KOSPI/KOSDAQ) *
               <input
@@ -776,7 +903,6 @@ export default function CalendarPage() {
                     companyName: "",
                     companyTicker: "",
                     companyMarket: "",
-                    companyFinanceUrl: "",
                   }));
                 }}
                 placeholder="예: 삼성전자, 카카오"
@@ -839,12 +965,6 @@ export default function CalendarPage() {
                 style={{ width: "100%", padding: "8px", marginTop: "4px" }}
               />
             </label>
-
-            {form.companyFinanceUrl ? (
-              <p style={{ margin: 0, color: "#1d4ed8", fontSize: "13px" }}>
-                Google Finance: {form.companyFinanceUrl}
-              </p>
-            ) : null}
 
             <label className="calendar-modal-label">
               시작
