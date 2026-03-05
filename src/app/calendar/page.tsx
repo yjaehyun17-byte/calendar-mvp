@@ -237,18 +237,16 @@ export default function CalendarPage() {
   const calendarEvents = useMemo<EventInput[]>(() => {
     return events.map((event) => ({
       id: event.id,
-      title: (() => {
-          const typeMatch = event.title.match(/^\[(탐방|컨콜)\]\s*/);
-          const label = typeMatch ? (typeMatch[1] === "탐방" ? "(탐)" : "(컨)") : "";
-          const company = event.title.replace(/^\[(탐방|컨콜)\]\s*/, "").replace(/\s*\(\d+\.KRX\)$/, "");
-          return `${label}${company}`;
-        })(),
+      title: event.title.replace(/^\[(탐방|컨콜)\]\s*/, "").replace(/\s*\(\d+\.KRX\)$/, ""),
       start: event.start,
       end: event.end ?? undefined,
       backgroundColor: event.color,
       borderColor: event.color,
       textColor: getReadableTextColor(event.color || DEFAULT_COLOR),
-      extendedProps: { notes: event.notes },
+      extendedProps: {
+          notes: event.notes,
+          eventType: event.title.match(/^\[(탐방|컨콜)\]/)?.[1] ?? null,
+        },
     }));
   }, [events]);
 
@@ -813,6 +811,22 @@ export default function CalendarPage() {
           month: "월",
           week: "주",
           day: "일",
+        }}
+        eventContent={(arg) => {
+          const type = arg.event.extendedProps.eventType as string | null;
+          const prefix = type === "탐방" ? "(탐)" : type === "컨콜" ? "(컨)" : null;
+          const prefixColor = type === "탐방" ? "#dc2626" : "#2563eb";
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: "2px", overflow: "hidden", fontSize: "inherit" }}>
+              {prefix && (
+                <span style={{ color: prefixColor, fontWeight: 700, flexShrink: 0 }}>{prefix}</span>
+              )}
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {arg.timeText && <span style={{ marginRight: "2px" }}>{arg.timeText}</span>}
+                {arg.event.title}
+              </span>
+            </div>
+          );
         }}
         eventTimeFormat={(time) => {
           const h = time.date.marker.getUTCHours();
