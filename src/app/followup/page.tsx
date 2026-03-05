@@ -53,13 +53,19 @@ export default function FollowupPage() {
     <main style={{ padding: "24px" }}>
       <h1 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "20px" }}>팔로업</h1>
 
-      {isLoading ? (
-        <p style={{ color: "#6b7280" }}>데이터를 불러오는 중...</p>
-      ) : items.length === 0 ? (
-        <p style={{ color: "#6b7280" }}>팔로업할 일정이 없습니다.</p>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", alignItems: "start" }}>
+        <section>
+          <h2 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "12px", color: "#374151" }}>
+            수익률 트래킹
+          </h2>
+
+          {isLoading ? (
+            <p style={{ color: "#6b7280" }}>데이터를 불러오는 중...</p>
+          ) : items.length === 0 ? (
+            <p style={{ color: "#6b7280" }}>팔로업할 일정이 없습니다.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
             style={{
               width: "100%",
               borderCollapse: "collapse",
@@ -140,8 +146,14 @@ export default function FollowupPage() {
               })}
             </tbody>
           </table>
-        </div>
-      )}
+            </div>
+          )}
+        </section>
+
+        <section>
+          {/* 추후 기능 추가 예정 */}
+        </section>
+      </div>
     </main>
   );
 }
