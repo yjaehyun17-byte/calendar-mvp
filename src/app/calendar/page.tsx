@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
@@ -10,6 +10,7 @@ import type {
   DateSelectArg,
   EventApi,
   EventClickArg,
+  EventContentArg,
   EventDropArg,
   EventInput,
 } from "@fullcalendar/core";
@@ -326,10 +327,17 @@ export default function CalendarPage() {
   };
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    let timer: ReturnType<typeof setTimeout>;
+    const check = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setIsMobile(window.innerWidth < 768), 150);
+    };
     check();
     window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    return () => {
+      window.removeEventListener("resize", check);
+      clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -749,6 +757,27 @@ export default function CalendarPage() {
     await updateEventTime(info);
   };
 
+  const renderEventContent = useCallback((arg: EventContentArg) => {
+    const type = arg.event.extendedProps.eventType as string | null;
+    const prefix = type === "탐방" ? "(탐)" : type === "컨콜" ? "(컨)" : null;
+    const prefixColor = type === "탐방" ? "#dc2626" : "#2563eb";
+    const isList = arg.view.type.startsWith("list");
+    const listTime =
+      isList && arg.event.start
+        ? formatKoreanTime(arg.event.start.getHours(), arg.event.start.getMinutes())
+        : null;
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "4px", overflow: "hidden", fontSize: "inherit" }}>
+        {prefix && <span style={{ color: prefixColor, fontWeight: 700, flexShrink: 0 }}>{prefix}</span>}
+        {isList && listTime && <span style={{ flexShrink: 0, fontWeight: 600 }}>{listTime}</span>}
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {!isList && arg.timeText && <span style={{ marginRight: "2px" }}>{arg.timeText}</span>}
+          {arg.event.title}
+        </span>
+      </div>
+    );
+  }, []);
+
   const isSaveDisabled =
     !form.companyName.trim() || !form.companyTicker.trim() || !form.start;
 
@@ -872,32 +901,7 @@ export default function CalendarPage() {
           week: "주",
           day: "일",
         }}
-        eventContent={(arg) => {
-          const type = arg.event.extendedProps.eventType as string | null;
-          const prefix = type === "탐방" ? "(탐)" : type === "컨콜" ? "(컨)" : null;
-          const prefixColor = type === "탐방" ? "#dc2626" : "#2563eb";
-          const isList = arg.view.type.startsWith("list");
-
-          const listTime =
-            isList && arg.event.start
-              ? formatKoreanTime(arg.event.start.getHours(), arg.event.start.getMinutes())
-              : null;
-
-          return (
-            <div style={{ display: "flex", alignItems: "center", gap: "4px", overflow: "hidden", fontSize: "inherit" }}>
-              {prefix && (
-                <span style={{ color: prefixColor, fontWeight: 700, flexShrink: 0 }}>{prefix}</span>
-              )}
-              {isList && listTime && (
-                <span style={{ flexShrink: 0, fontWeight: 600 }}>{listTime}</span>
-              )}
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {!isList && arg.timeText && <span style={{ marginRight: "2px" }}>{arg.timeText}</span>}
-                {arg.event.title}
-              </span>
-            </div>
-          );
-        }}
+        eventContent={renderEventContent}
         eventTimeFormat={(time) =>
           formatKoreanTime(time.date.marker.getUTCHours(), time.date.marker.getUTCMinutes())
         }
