@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import listPlugin from "@fullcalendar/list";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import type {
   DateSelectArg,
@@ -208,6 +209,7 @@ function getDisplayName(user: User | null): string {
 
 export default function CalendarPage() {
 
+  const [isMobile, setIsMobile] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -307,6 +309,13 @@ export default function CalendarPage() {
   };
 
   useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
     const syncAuth = async () => {
       try {
         const {
@@ -364,7 +373,24 @@ export default function CalendarPage() {
     void run();
   }, [user]);
 
+  const isWebView = () => {
+    const ua = navigator.userAgent;
+    return (
+      /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|NAVER|Snapchat/i.test(ua) ||
+      (/Android/.test(ua) && /wv/.test(ua)) ||
+      (/iPhone|iPad/.test(ua) && !/Safari/.test(ua) && /AppleWebKit/.test(ua))
+    );
+  };
+
   const signInWithGoogle = async () => {
+    if (isWebView()) {
+      setAuthError(
+        "카카오톡, 인스타그램 등 앱 내 브라우저에서는 Google 로그인이 차단됩니다.\n" +
+        "Safari 또는 Chrome 브라우저에서 직접 열어 주세요."
+      );
+      return;
+    }
+
     setIsSigningIn(true);
     setAuthError(null);
 
@@ -375,10 +401,6 @@ export default function CalendarPage() {
         options: {
           redirectTo,
           skipBrowserRedirect: true,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
         },
       });
 
@@ -776,6 +798,7 @@ export default function CalendarPage() {
                 color: "#b91c1c",
                 fontSize: "14px",
                 lineHeight: 1.5,
+                whiteSpace: "pre-line",
               }}
             >
               {authError}
@@ -824,13 +847,15 @@ export default function CalendarPage() {
       {isLoading ? <p>불러오는 중...</p> : null}
 
       <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        headerToolbar={{
-          left: "prev,next today",
-          center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay",
-        }}
+        plugins={isMobile
+          ? [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]
+          : [dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView={isMobile ? "listMonth" : "dayGridMonth"}
+        key={isMobile ? "mobile" : "desktop"}
+        headerToolbar={isMobile
+          ? { left: "prev,next", center: "title", right: "today" }
+          : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
+        }
         buttonText={{
           today: "오늘",
           month: "월",
@@ -883,9 +908,9 @@ export default function CalendarPage() {
             inset: 0,
             background: "rgba(0, 0, 0, 0.4)",
             display: "flex",
-            alignItems: "center",
+            alignItems: isMobile ? "flex-end" : "center",
             justifyContent: "center",
-            padding: "16px",
+            padding: isMobile ? "0" : "16px",
             zIndex: 1000,
             color: "#000",
           }}
@@ -894,10 +919,12 @@ export default function CalendarPage() {
             className="calendar-modal"
             style={{
               width: "100%",
-              maxWidth: "460px",
+              maxWidth: isMobile ? "100%" : "460px",
+              maxHeight: "80vh",
+              overflowY: "auto",
               background: "#fff",
               border: "1px solid #d1d5db",
-              borderRadius: "12px",
+              borderRadius: isMobile ? "16px 16px 0 0" : "12px",
               padding: "20px",
               boxShadow: "0 10px 30px rgba(0, 0, 0, 0.2)",
               display: "grid",
@@ -910,7 +937,6 @@ export default function CalendarPage() {
             >
               {editingId ? "기업 탐방 일정 수정" : "기업 탐방 일정 추가"}
             </h2>
-
 
             <label className="calendar-modal-label">
               일정 유형 *

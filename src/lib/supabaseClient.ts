@@ -13,6 +13,7 @@ export const supabase = createClient(
   auth: {
     persistSession: typeof window !== "undefined",
     autoRefreshToken: typeof window !== "undefined",
+    flowType: "implicit",
   },
   },
 );

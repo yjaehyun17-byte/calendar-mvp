@@ -83,3 +83,38 @@ body {
 .calendar-page .fc-daygrid-event-dot {
   display: none;
 }
+
+@media (max-width: 767px) {
+  .calendar-page {
+    padding: 12px 8px !important;
+  }
+
+  .calendar-page h1 {
+    font-size: 18px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .calendar-page .fc .fc-toolbar {
+    gap: 4px;
+  }
+
+  .calendar-page .fc .fc-toolbar-title {
+    font-size: 15px;
+  }
+
+  .calendar-page .fc .fc-button {
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  /* 리스트 뷰 이벤트 행 */
+  .calendar-page .fc-list-event td {
+    font-size: 14px;
+    padding: 8px 6px;
+  }
+
+  .calendar-page .fc-list-day-cushion {
+    font-size: 13px;
+    padding: 6px 8px;
+  }
+}
