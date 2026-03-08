@@ -88,11 +88,12 @@ export async function GET(request: Request) {
   const now = Math.floor(Date.now() / 1000);
   const periodStart = now - lookbackDays * 24 * 3600;
 
-  const [chartData, basicData, annualData, quarterData] = await Promise.all([
+  const [chartData, basicData, summaryData, annualData, quarterData] = await Promise.all([
     safeFetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&period1=${periodStart}&period2=${now}`
     ),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/basic`, naverHeaders),
+    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/summary`, naverHeaders),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`, naverHeaders),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`, naverHeaders),
   ]);
@@ -113,14 +114,13 @@ export async function GET(request: Request) {
   const currentPrice = priceHistory.at(-1)?.close ?? null;
   const prevPrice = priceHistory.at(-2)?.close ?? null;
   const changePct = currentPrice && prevPrice ? ((currentPrice - prevPrice) / prevPrice) * 100 : null;
-  // Naver basic API: try known field names for 시가총액
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const naverMarketCap =
-    (basicData?.marketValue as number | undefined) ??
-    (basicData?.totalMarketValue as number | undefined) ??
-    null;
-  console.log("[company-detail] basicData sample:", JSON.stringify(basicData)?.slice(0, 300));
-  const marketCap = naverMarketCap ?? chartResult?.meta?.marketCap ?? null;
+  const annualRowTitles = (annualData as NaverFinanceResponse | null)?.financeInfo?.rowList?.map((r) => r.title) ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const annualMarketCapRow = (annualData as NaverFinanceResponse | null)?.financeInfo?.rowList?.find((r) => r.title === "시가총액");
+  console.log("[company-detail] annualRowTitles:", annualRowTitles);
+  console.log("[company-detail] summaryData:", JSON.stringify(summaryData)?.slice(0, 500));
+  const marketCap = chartResult?.meta?.marketCap ?? null;
 
   return NextResponse.json({
     companyName: company?.name_kr ?? ticker,
@@ -132,6 +132,8 @@ export async function GET(request: Request) {
     priceHistory,
     annualFinancials: parseNaverFinanceData(annualData, true),
     quarterlyFinancials: parseNaverFinanceData(quarterData, true),
-    _debug_basicData: basicData,
+    _debug_summaryData: summaryData,
+    _debug_annualRowTitles: annualRowTitles,
+    _debug_annualMarketCapRow: annualMarketCapRow,
   });
 }
