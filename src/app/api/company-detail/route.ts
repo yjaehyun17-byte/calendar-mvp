@@ -124,7 +124,8 @@ export async function GET(request: Request) {
         r.title === "발행주식수" || r.title === "상장주식수"
       );
       if (sharesRow) {
-        const shares = parseNaverValue(sharesRow, latestPeriod.key, 1);
+        // 발행주식수 단위: 천주 → 실제 주식 수로 변환 (×1,000)
+        const shares = parseNaverValue(sharesRow, latestPeriod.key, 1_000);
         if (shares && shares > 0) {
           marketCap = currentPrice * shares;
         }
