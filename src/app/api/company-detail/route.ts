@@ -88,11 +88,11 @@ export async function GET(request: Request) {
   const now = Math.floor(Date.now() / 1000);
   const periodStart = now - lookbackDays * 24 * 3600;
 
-  const [chartData, quoteData, annualData, quarterData] = await Promise.all([
+  const [chartData, basicData, annualData, quarterData] = await Promise.all([
     safeFetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&period1=${periodStart}&period2=${now}`
     ),
-    safeFetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${yahooTicker}`),
+    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/basic`, naverHeaders),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`, naverHeaders),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`, naverHeaders),
   ]);
@@ -113,11 +113,14 @@ export async function GET(request: Request) {
   const currentPrice = priceHistory.at(-1)?.close ?? null;
   const prevPrice = priceHistory.at(-2)?.close ?? null;
   const changePct = currentPrice && prevPrice ? ((currentPrice - prevPrice) / prevPrice) * 100 : null;
-  const marketCap =
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    (quoteData?.quoteResponse?.result?.[0]?.marketCap as number | undefined) ??
-    chartResult?.meta?.marketCap ??
+  // Naver basic API: try known field names for 시가총액
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const naverMarketCap =
+    (basicData?.marketValue as number | undefined) ??
+    (basicData?.totalMarketValue as number | undefined) ??
     null;
+  console.log("[company-detail] basicData sample:", JSON.stringify(basicData)?.slice(0, 300));
+  const marketCap = naverMarketCap ?? chartResult?.meta?.marketCap ?? null;
 
   return NextResponse.json({
     companyName: company?.name_kr ?? ticker,
