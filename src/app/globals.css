@@ -107,6 +107,11 @@ body {
     font-size: 13px;
   }
 
+  /* 리스트 뷰 FullCalendar 시간 셀 숨김 (eventContent에서 직접 렌더링) */
+  .calendar-page .fc-list-event-time {
+    display: none;
+  }
+
   /* 리스트 뷰 이벤트 행 */
   .calendar-page .fc-list-event td {
     font-size: 14px;

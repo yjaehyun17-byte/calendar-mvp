@@ -869,13 +869,29 @@ export default function CalendarPage() {
           const type = arg.event.extendedProps.eventType as string | null;
           const prefix = type === "탐방" ? "(탐)" : type === "컨콜" ? "(컨)" : null;
           const prefixColor = type === "탐방" ? "#dc2626" : "#2563eb";
+          const isList = arg.view.type.startsWith("list");
+
+          let listTime: string | null = null;
+          if (isList && arg.event.start) {
+            const s = arg.event.start;
+            const h = s.getHours();
+            const m = s.getMinutes();
+            const isPM = h >= 12;
+            const h12 = h % 12 || 12;
+            const ap = isPM ? "오후" : "오전";
+            listTime = m === 0 ? `${ap}${h12}시` : `${ap}${h12}시${String(m).padStart(2, "0")}분`;
+          }
+
           return (
-            <div style={{ display: "flex", alignItems: "center", gap: "2px", overflow: "hidden", fontSize: "inherit" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px", overflow: "hidden", fontSize: "inherit" }}>
               {prefix && (
                 <span style={{ color: prefixColor, fontWeight: 700, flexShrink: 0 }}>{prefix}</span>
               )}
+              {isList && listTime && (
+                <span style={{ flexShrink: 0, color: "#374151" }}>{listTime}</span>
+              )}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {!arg.view.type.startsWith("list") && arg.timeText && <span style={{ marginRight: "2px" }}>{arg.timeText}</span>}
+                {!isList && arg.timeText && <span style={{ marginRight: "2px" }}>{arg.timeText}</span>}
                 {arg.event.title}
               </span>
             </div>
@@ -888,20 +904,6 @@ export default function CalendarPage() {
           const h12 = h % 12 || 12;
           const prefix = isPM ? "오후" : "오전";
           return m === 0 ? `${prefix}${h12}시` : `${prefix}${h12}시${String(m).padStart(2, "0")}분`;
-        }}
-        eventDidMount={(info) => {
-          if (info.view.type.startsWith("list")) {
-            const timeEl = info.el.querySelector(".fc-list-event-time");
-            if (timeEl && info.event.start) {
-              const start = info.event.start;
-              const h = start.getHours();
-              const m = start.getMinutes();
-              const isPM = h >= 12;
-              const h12 = h % 12 || 12;
-              const prefix = isPM ? "오후" : "오전";
-              timeEl.textContent = m === 0 ? `${prefix}${h12}시` : `${prefix}${h12}시${String(m).padStart(2, "0")}분`;
-            }
-          }
         }}
         selectable
         editable
