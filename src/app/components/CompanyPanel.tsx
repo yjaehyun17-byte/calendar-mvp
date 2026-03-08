@@ -12,6 +12,7 @@ type CompanyDetail = {
   market: string;
   currentPrice: number | null;
   changePct: number | null;
+  marketCap: number | null;
   priceHistory: PricePoint[];
   annualFinancials: FinancialRow[];
   quarterlyFinancials: FinancialRow[];
@@ -330,7 +331,14 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
             <p style={{ margin: 0, color: "#6b7280" }}>불러오는 중...</p>
           ) : detail ? (
             <>
-              <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>{detail.companyName}</h2>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>{detail.companyName}</h2>
+                {detail.marketCap !== null && (
+                  <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>
+                    시총 {formatKRW(detail.marketCap)}
+                  </span>
+                )}
+              </div>
               <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>{detail.ticker} · {detail.market}</p>
               {detail.currentPrice !== null && (
                 <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: 700 }}>

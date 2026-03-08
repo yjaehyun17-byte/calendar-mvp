@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSupabaseClient } from "@/lib/serverSupabase";
 
 type YahooChartResult = {
+  meta: { marketCap?: number };
   timestamp: number[];
   indicators: { quote: Array<{ close: (number | null)[] }> };
 };
@@ -111,6 +112,7 @@ export async function GET(request: Request) {
   const currentPrice = priceHistory.at(-1)?.close ?? null;
   const prevPrice = priceHistory.at(-2)?.close ?? null;
   const changePct = currentPrice && prevPrice ? ((currentPrice - prevPrice) / prevPrice) * 100 : null;
+  const marketCap = chartResult?.meta?.marketCap ?? null;
 
   return NextResponse.json({
     companyName: company?.name_kr ?? ticker,
@@ -118,6 +120,7 @@ export async function GET(request: Request) {
     market: company?.market ?? "KRX",
     currentPrice,
     changePct,
+    marketCap,
     priceHistory,
     annualFinancials: parseNaverFinanceData(annualData, true),
     quarterlyFinancials: parseNaverFinanceData(quarterData, true),
