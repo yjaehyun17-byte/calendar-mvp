@@ -417,6 +417,7 @@ export default function CalendarPage() {
         options: {
           redirectTo,
           skipBrowserRedirect: true,
+          scopes: "https://www.googleapis.com/auth/calendar.events",
         },
       });
 
@@ -601,6 +602,9 @@ export default function CalendarPage() {
     setIsAttendanceSaving(true);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const providerToken = sessionData?.session?.provider_token ?? null;
+
       const response = await fetch(`/api/events/${editingId}/attendance`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -609,6 +613,7 @@ export default function CalendarPage() {
           userName: getDisplayName(user),
           userEmail: user.email ?? null,
           action,
+          providerToken,
         }),
       });
 
