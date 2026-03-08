@@ -23,16 +23,12 @@ const TICKER_COLORS = [
   "#0891b2", "#be185d", "#15803d", "#c2410c", "#4338ca",
 ];
 
-function getWeekRange() {
+function getMonthRange() {
   const today = new Date();
-  const day = today.getDay(); // 0=일, 1=월 ...
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((day + 6) % 7));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  return { start: fmt(monday), end: fmt(sunday) };
+  return { start: fmt(start), end: fmt(end) };
 }
 
 function formatDateKo(dateStr: string) {
@@ -47,7 +43,7 @@ export default function UniversePage() {
   const [tickers, setTickers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { start: weekStart, end: weekEnd } = useMemo(() => getWeekRange(), []);
+  const { start: weekStart, end: weekEnd } = useMemo(() => getMonthRange(), []);
 
   useEffect(() => {
     const load = async () => {
@@ -138,13 +134,13 @@ export default function UniversePage() {
 
           {/* 한주 주요 일정 */}
           <aside style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px" }}>
-            <h2 style={{ fontSize: "15px", fontWeight: 700, margin: "0 0 4px" }}>한주 주요 일정</h2>
+            <h2 style={{ fontSize: "15px", fontWeight: 700, margin: "0 0 4px" }}>이번달 주요일정</h2>
             <p style={{ fontSize: "12px", color: "#9ca3af", margin: "0 0 14px" }}>
               {formatDateKo(weekStart)} – {formatDateKo(weekEnd)}
             </p>
 
             {weekGrouped.length === 0 ? (
-              <p style={{ fontSize: "13px", color: "#9ca3af" }}>이번 주 일정 없음</p>
+              <p style={{ fontSize: "13px", color: "#9ca3af" }}>이번달 일정 없음</p>
             ) : (
               <div style={{ display: "grid", gap: "12px" }}>
                 {weekGrouped.map(([date, evs]) => (
