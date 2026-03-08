@@ -524,6 +524,128 @@ function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forc
   );
 }
 
+type ChecklistItem = { id: string; ticker: string; content: string; checked: boolean };
+
+function ChecklistSection({ ticker }: { ticker: string }) {
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [input, setInput] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/checklists?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" });
+      const data = (await res.json()) as ChecklistItem[];
+      setItems(Array.isArray(data) ? data : []);
+    } catch {
+      setItems([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [ticker]);
+
+  const handleAdd = async () => {
+    if (!input.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/checklists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, content: input.trim() }),
+      });
+      const item = (await res.json()) as ChecklistItem;
+      setItems((prev) => [...prev, item]);
+      setInput("");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (item: ChecklistItem) => {
+    const res = await fetch("/api/checklists", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: item.id, checked: !item.checked }),
+    });
+    const updated = (await res.json()) as ChecklistItem;
+    setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  };
+
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/checklists?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  const done = items.filter((i) => i.checked).length;
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>체크리스트</p>
+        {items.length > 0 && (
+          <span style={{ fontSize: "11px", color: "#6b7280" }}>{done}/{items.length}</span>
+        )}
+      </div>
+
+      {/* 입력 */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "4px", marginBottom: "8px" }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleAdd(); } }}
+          placeholder="체크리스트 항목 입력"
+          style={inputStyle}
+        />
+        <button
+          type="button"
+          onClick={() => void handleAdd()}
+          disabled={saving || !input.trim()}
+          style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #2563eb", background: "#eff6ff", color: "#2563eb", fontSize: "12px", cursor: "pointer", fontWeight: 600, opacity: saving ? 0.6 : 1 }}
+        >
+          추가
+        </button>
+      </div>
+
+      {isLoading ? (
+        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>불러오는 중...</p>
+      ) : items.length === 0 ? (
+        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>항목 없음</p>
+      ) : (
+        <div style={{ display: "grid", gap: "4px" }}>
+          {items.map((item) => (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <input
+                type="checkbox"
+                checked={item.checked}
+                onChange={() => void handleToggle(item)}
+                style={{ accentColor: "#2563eb", flexShrink: 0 }}
+              />
+              <span style={{
+                flex: 1,
+                fontSize: "12px",
+                color: item.checked ? "#9ca3af" : "#111827",
+                textDecoration: item.checked ? "line-through" : "none",
+              }}>
+                {item.content}
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleDelete(item.id)}
+                style={{ fontSize: "11px", color: "#d1d5db", border: "none", background: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CompanyPanel({ ticker, onClose }: { ticker: string; onClose: () => void }) {
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -712,6 +834,9 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
           <div ref={memosSectionRef}>
             <MemosSection ticker={ticker} forceOpen={memoFormOpen} onFormClose={() => setMemoFormOpen(false)} />
           </div>
+
+          {/* 체크리스트 */}
+          <ChecklistSection ticker={ticker} />
         </>
       )}
     </div>
