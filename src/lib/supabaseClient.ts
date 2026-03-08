@@ -10,10 +10,10 @@ export const supabase = createClient(
   supabaseUrl ?? fallbackUrl,
   supabaseAnonKey ?? fallbackAnonKey,
   {
-  auth: {
-    persistSession: typeof window !== "undefined",
-    autoRefreshToken: typeof window !== "undefined",
-    flowType: "implicit",
-  },
+    auth: {
+      persistSession: typeof window !== "undefined",
+      autoRefreshToken: typeof window !== "undefined",
+      flowType: "implicit",
+    },
   },
 );

@@ -166,6 +166,22 @@ function stripGoogleFinanceLines(notes: string): string {
     .trim();
 }
 
+function formatKoreanTime(h: number, m: number): string {
+  const isPM = h >= 12;
+  const h12 = h % 12 || 12;
+  const prefix = isPM ? "오후" : "오전";
+  return m === 0 ? `${prefix}${h12}시` : `${prefix}${h12}시${String(m).padStart(2, "0")}분`;
+}
+
+function isWebView(): boolean {
+  const ua = navigator.userAgent;
+  return (
+    /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|NAVER|Snapchat/i.test(ua) ||
+    (/Android/.test(ua) && /wv/.test(ua)) ||
+    (/iPhone|iPad/.test(ua) && !/Safari/.test(ua) && /AppleWebKit/.test(ua))
+  );
+}
+
 function getDisplayName(user: User | null): string {
   if (!user) return "";
 
@@ -373,15 +389,6 @@ export default function CalendarPage() {
 
     void run();
   }, [user]);
-
-  const isWebView = () => {
-    const ua = navigator.userAgent;
-    return (
-      /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|NAVER|Snapchat/i.test(ua) ||
-      (/Android/.test(ua) && /wv/.test(ua)) ||
-      (/iPhone|iPad/.test(ua) && !/Safari/.test(ua) && /AppleWebKit/.test(ua))
-    );
-  };
 
   const signInWithGoogle = async () => {
     if (isWebView()) {
@@ -871,16 +878,10 @@ export default function CalendarPage() {
           const prefixColor = type === "탐방" ? "#dc2626" : "#2563eb";
           const isList = arg.view.type.startsWith("list");
 
-          let listTime: string | null = null;
-          if (isList && arg.event.start) {
-            const s = arg.event.start;
-            const h = s.getHours();
-            const m = s.getMinutes();
-            const isPM = h >= 12;
-            const h12 = h % 12 || 12;
-            const ap = isPM ? "오후" : "오전";
-            listTime = m === 0 ? `${ap}${h12}시` : `${ap}${h12}시${String(m).padStart(2, "0")}분`;
-          }
+          const listTime =
+            isList && arg.event.start
+              ? formatKoreanTime(arg.event.start.getHours(), arg.event.start.getMinutes())
+              : null;
 
           return (
             <div style={{ display: "flex", alignItems: "center", gap: "4px", overflow: "hidden", fontSize: "inherit" }}>
@@ -897,14 +898,9 @@ export default function CalendarPage() {
             </div>
           );
         }}
-        eventTimeFormat={(time) => {
-          const h = time.date.marker.getUTCHours();
-          const m = time.date.marker.getUTCMinutes();
-          const isPM = h >= 12;
-          const h12 = h % 12 || 12;
-          const prefix = isPM ? "오후" : "오전";
-          return m === 0 ? `${prefix}${h12}시` : `${prefix}${h12}시${String(m).padStart(2, "0")}분`;
-        }}
+        eventTimeFormat={(time) =>
+          formatKoreanTime(time.date.marker.getUTCHours(), time.date.marker.getUTCMinutes())
+        }
         selectable
         editable
         selectMirror
