@@ -531,16 +531,28 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
   const [tab, setTab] = useState<"annual" | "quarterly">("annual");
   const [period, setPeriod] = useState<ChartPeriod>("1d");
   const [memoFormOpen, setMemoFormOpen] = useState(false);
+  const [inUniverse, setInUniverse] = useState(false);
+  const [universeLoading, setUniverseLoading] = useState(false);
   const memosSectionRef = useRef<HTMLDivElement>(null);
 
-  // 티커 변경 시 전체 데이터 재조회
+  // 티커 변경 시 전체 데이터 재조회 + 유니버스 여부 확인
   useEffect(() => {
     setIsLoading(true);
     setDetail(null);
     setPeriod("1d");
-    fetch(`/api/company-detail?ticker=${encodeURIComponent(ticker)}&period=1d`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => setDetail(d as CompanyDetail))
+    setMemoFormOpen(false);
+
+    Promise.all([
+      fetch(`/api/company-detail?ticker=${encodeURIComponent(ticker)}&period=1d`, { cache: "no-store" })
+        .then((r) => r.json()),
+      fetch("/api/universe", { cache: "no-store" })
+        .then((r) => r.json()),
+    ])
+      .then(([detail, universe]) => {
+        setDetail(detail as CompanyDetail);
+        const tickers = (universe as { ticker: string }[]).map((u) => u.ticker);
+        setInUniverse(tickers.includes(ticker));
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [ticker]);
@@ -575,13 +587,41 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
                 )}
                 <button
                   type="button"
-                  onClick={() => {
-                    setMemoFormOpen(true);
-                    setTimeout(() => memosSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                  disabled={universeLoading}
+                  onClick={async () => {
+                    setUniverseLoading(true);
+                    try {
+                      if (inUniverse) {
+                        await fetch(`/api/universe?ticker=${encodeURIComponent(ticker)}`, { method: "DELETE" });
+                        setInUniverse(false);
+                      } else {
+                        await fetch("/api/universe", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ ticker }),
+                        });
+                        setInUniverse(true);
+                        setMemoFormOpen(true);
+                        setTimeout(() => memosSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                      }
+                    } finally {
+                      setUniverseLoading(false);
+                    }
                   }}
-                  style={{ fontSize: "11px", padding: "3px 10px", borderRadius: "6px", border: "1px solid #2563eb", background: "#eff6ff", color: "#2563eb", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                  style={{
+                    fontSize: "11px",
+                    padding: "3px 10px",
+                    borderRadius: "6px",
+                    border: inUniverse ? "1px solid #16a34a" : "1px solid #2563eb",
+                    background: inUniverse ? "#f0fdf4" : "#eff6ff",
+                    color: inUniverse ? "#16a34a" : "#2563eb",
+                    cursor: universeLoading ? "not-allowed" : "pointer",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    opacity: universeLoading ? 0.6 : 1,
+                  }}
                 >
-                  팔로업하기
+                  {inUniverse ? "팔로업 중 ✓" : "팔로업하기"}
                 </button>
               </div>
               <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>{detail.ticker} · {detail.market}</p>
