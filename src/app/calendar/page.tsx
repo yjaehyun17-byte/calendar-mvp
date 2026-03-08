@@ -887,7 +887,7 @@ export default function CalendarPage() {
           const isPM = h >= 12;
           const h12 = h % 12 || 12;
           const prefix = isPM ? "오후" : "오전";
-          return m === 0 ? `${prefix}${h12}` : `${prefix}${h12}:${String(m).padStart(2, "0")}`;
+          return m === 0 ? `${prefix}${h12}시` : `${prefix}${h12}시${String(m).padStart(2, "0")}분`;
         }}
         selectable
         editable
