@@ -88,12 +88,10 @@ export async function GET(request: Request) {
   const now = Math.floor(Date.now() / 1000);
   const periodStart = now - lookbackDays * 24 * 3600;
 
-  const [chartData, basicData, summaryData, annualData, quarterData] = await Promise.all([
+  const [chartData, annualData, quarterData] = await Promise.all([
     safeFetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&period1=${periodStart}&period2=${now}`
     ),
-    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/basic`, naverHeaders),
-    safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/summary`, naverHeaders),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`, naverHeaders),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`, naverHeaders),
   ]);
@@ -114,13 +112,36 @@ export async function GET(request: Request) {
   const currentPrice = priceHistory.at(-1)?.close ?? null;
   const prevPrice = priceHistory.at(-2)?.close ?? null;
   const changePct = currentPrice && prevPrice ? ((currentPrice - prevPrice) / prevPrice) * 100 : null;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const annualRowTitles = (annualData as NaverFinanceResponse | null)?.financeInfo?.rowList?.map((r) => r.title) ?? [];
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const annualMarketCapRow = (annualData as NaverFinanceResponse | null)?.financeInfo?.rowList?.find((r) => r.title === "시가총액");
-  console.log("[company-detail] annualRowTitles:", annualRowTitles);
-  console.log("[company-detail] summaryData:", JSON.stringify(summaryData)?.slice(0, 500));
-  const marketCap = chartResult?.meta?.marketCap ?? null;
+  // 시가총액: 발행주식수 × 현재가 (연간 재무 rowList에서 추출)
+  const annualFi = (annualData as NaverFinanceResponse | null)?.financeInfo;
+  let marketCap: number | null = null;
+
+  if (annualFi && currentPrice) {
+    const confirmedPeriods = annualFi.trTitleList.filter((t) => t.isConsensus === "N");
+    const latestPeriod = confirmedPeriods.at(-1);
+    if (latestPeriod) {
+      const sharesRow = annualFi.rowList.find((r) =>
+        r.title === "발행주식수" || r.title === "상장주식수"
+      );
+      if (sharesRow) {
+        const shares = parseNaverValue(sharesRow, latestPeriod.key, 1);
+        if (shares && shares > 0) {
+          marketCap = currentPrice * shares;
+        }
+      }
+      // fallback: 순이익 / EPS 로 발행주식수 추정
+      if (!marketCap) {
+        const niRow = annualFi.rowList.find((r) => r.title === "당기순이익");
+        const epsRow = annualFi.rowList.find((r) => r.title === "EPS");
+        const ni = parseNaverValue(niRow, latestPeriod.key, 100_000_000);
+        const eps = parseNaverValue(epsRow, latestPeriod.key, 1);
+        if (ni && eps && eps > 0) {
+          const impliedShares = ni / eps;
+          marketCap = currentPrice * impliedShares;
+        }
+      }
+    }
+  }
 
   return NextResponse.json({
     companyName: company?.name_kr ?? ticker,
@@ -132,8 +153,5 @@ export async function GET(request: Request) {
     priceHistory,
     annualFinancials: parseNaverFinanceData(annualData, true),
     quarterlyFinancials: parseNaverFinanceData(quarterData, true),
-    _debug_summaryData: summaryData,
-    _debug_annualRowTitles: annualRowTitles,
-    _debug_annualMarketCapRow: annualMarketCapRow,
   });
 }
