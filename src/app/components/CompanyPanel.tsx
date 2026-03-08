@@ -291,6 +291,152 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+type MemoRow = { id: string; ticker: string; visit_date: string; summary: string; details: string };
+
+function MemosSection({ ticker }: { ticker: string }) {
+  const [rows, setRows] = useState<MemoRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [form, setForm] = useState({ visit_date: "", summary: "", details: "" });
+
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/memos?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" });
+      const data = (await res.json()) as MemoRow[];
+      setRows(Array.isArray(data) ? data : []);
+    } catch {
+      setRows([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [ticker]);
+
+  const handleSave = async () => {
+    if (!form.visit_date) return;
+    setSaving(true);
+    try {
+      await fetch("/api/memos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, ...form }),
+      });
+      setForm({ visit_date: "", summary: "", details: "" });
+      setShowForm(false);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/memos?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    setExpanded((prev) => (prev === id ? null : prev));
+    await load();
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>탐방 메모</p>
+        <button
+          type="button"
+          onClick={() => setShowForm((v) => !v)}
+          style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", color: "#374151" }}
+        >
+          {showForm ? "취소" : "+ 추가"}
+        </button>
+      </div>
+
+      {showForm && (
+        <div style={{ background: "#f9fafb", borderRadius: "8px", padding: "10px", marginBottom: "8px", display: "grid", gap: "6px" }}>
+          <div>
+            <label style={{ fontSize: "11px", color: "#6b7280" }}>날짜</label>
+            <input
+              type="date"
+              value={form.visit_date}
+              onChange={(e) => setForm((f) => ({ ...f, visit_date: e.target.value }))}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: "11px", color: "#6b7280" }}>주요내용</label>
+            <input
+              value={form.summary}
+              onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
+              placeholder="핵심 포인트를 한 줄로 요약"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: "11px", color: "#6b7280" }}>상세내용</label>
+            <textarea
+              value={form.details}
+              onChange={(e) => setForm((f) => ({ ...f, details: e.target.value }))}
+              placeholder="미팅에서 나온 내용, 체크포인트 등 상세 기록"
+              rows={4}
+              style={{ ...inputStyle, resize: "vertical" }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving || !form.visit_date}
+            style={{ padding: "5px 12px", borderRadius: "6px", border: "none", background: "#2563eb", color: "#fff", fontSize: "12px", cursor: "pointer", fontWeight: 600, opacity: saving ? 0.6 : 1 }}
+          >
+            {saving ? "저장 중..." : "저장"}
+          </button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>불러오는 중...</p>
+      ) : rows.length === 0 ? (
+        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>메모 없음</p>
+      ) : (
+        <div style={{ display: "grid", gap: "6px" }}>
+          {rows.map((r) => (
+            <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
+              <div
+                onClick={() => setExpanded((prev) => (prev === r.id ? null : r.id))}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", cursor: "pointer", background: expanded === r.id ? "#eff6ff" : "#fff" }}
+              >
+                <div style={{ display: "flex", gap: "10px", alignItems: "baseline", minWidth: 0 }}>
+                  <span style={{ fontSize: "11px", color: "#6b7280", whiteSpace: "nowrap" }}>{r.visit_date}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.summary || "(주요내용 없음)"}
+                  </span>
+                </div>
+                <span style={{ fontSize: "11px", color: "#9ca3af", marginLeft: "8px" }}>{expanded === r.id ? "▲" : "▼"}</span>
+              </div>
+              {expanded === r.id && (
+                <div style={{ padding: "8px 10px", borderTop: "1px solid #e5e7eb", background: "#fafafa" }}>
+                  {r.details ? (
+                    <p style={{ margin: "0 0 8px", fontSize: "12px", color: "#374151", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{r.details}</p>
+                  ) : (
+                    <p style={{ margin: "0 0 8px", fontSize: "12px", color: "#9ca3af" }}>(상세내용 없음)</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(r.id)}
+                    style={{ fontSize: "11px", color: "#ef4444", border: "none", background: "none", cursor: "pointer", padding: 0 }}
+                  >
+                    삭제
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CompanyPanel({ ticker, onClose }: { ticker: string; onClose: () => void }) {
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -422,6 +568,9 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
 
           {/* 추정치 */}
           <EstimatesSection ticker={ticker} />
+
+          {/* 탐방 메모 */}
+          <MemosSection ticker={ticker} />
         </>
       )}
     </div>
