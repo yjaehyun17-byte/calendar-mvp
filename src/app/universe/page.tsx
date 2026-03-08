@@ -16,6 +16,14 @@ type UniverseEvent = {
   visitDate: string;
 };
 
+type ScheduleItem = {
+  id: string;
+  companyName: string;
+  ticker: string;
+  eventType: string;
+  date: string;
+};
+
 type UniverseTicker = { ticker: string; added_at: string };
 
 const TICKER_COLORS = [
@@ -37,13 +45,34 @@ function formatDateKo(dateStr: string) {
   return `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
 }
 
+const sectionStyle: React.CSSProperties = {
+  border: "1px solid #e5e7eb",
+  borderRadius: "12px",
+  padding: "16px",
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: "15px",
+  fontWeight: 700,
+  margin: "0 0 4px",
+};
+
+const sectionSubStyle: React.CSSProperties = {
+  fontSize: "12px",
+  color: "#9ca3af",
+  margin: "0 0 14px",
+};
+
 export default function UniversePage() {
   const [rawEvents, setRawEvents] = useState<UniverseEvent[]>([]);
   const [calEvents, setCalEvents] = useState<EventInput[]>([]);
   const [tickers, setTickers] = useState<string[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const { start: monthStart, end: monthEnd } = useMemo(() => getMonthRange(), []);
 
   const toggleChecked = async (ev: UniverseEvent) => {
     if (togglingId) return;
@@ -66,24 +95,25 @@ export default function UniversePage() {
     }
   };
 
-  const { start: weekStart, end: weekEnd } = useMemo(() => getMonthRange(), []);
-
   useEffect(() => {
     const load = async () => {
       try {
-        const [evRes, tkRes, chkRes] = await Promise.all([
+        const [evRes, tkRes, chkRes, schRes] = await Promise.all([
           fetch("/api/universe/events", { cache: "no-store" }),
           fetch("/api/universe", { cache: "no-store" }),
           fetch("/api/universe/checks", { cache: "no-store" }),
+          fetch("/api/universe/schedule", { cache: "no-store" }),
         ]);
         const evData = (await evRes.json()) as UniverseEvent[];
         const tkData = (await tkRes.json()) as UniverseTicker[];
         const chkData = (await chkRes.json()) as string[];
-        setChecked(new Set(chkData));
+        const schData = (await schRes.json()) as ScheduleItem[];
 
         const tkList = tkData.map((t) => t.ticker);
         setTickers(tkList);
         setRawEvents(evData);
+        setChecked(new Set(chkData));
+        setSchedule(schData);
 
         const colorMap = new Map<string, string>(
           tkList.map((t, i) => [t, TICKER_COLORS[i % TICKER_COLORS.length]])
@@ -108,23 +138,33 @@ export default function UniversePage() {
     void load();
   }, []);
 
-  // 이번 주 일정 (월~일)
-  const weekEvents = useMemo(() => {
-    return rawEvents
-      .filter((ev) => ev.date >= weekStart && ev.date <= weekEnd)
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [rawEvents, weekStart, weekEnd]);
+  // 이번달 주요일정 (타임라인) — 날짜별 그룹
+  const monthEvents = useMemo(() =>
+    rawEvents.filter((ev) => ev.date >= monthStart && ev.date <= monthEnd)
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    [rawEvents, monthStart, monthEnd]
+  );
 
-  // 날짜별 그룹핑
-  const weekGrouped = useMemo(() => {
+  const monthGrouped = useMemo(() => {
     const map = new Map<string, UniverseEvent[]>();
-    weekEvents.forEach((ev) => {
+    monthEvents.forEach((ev) => {
       const list = map.get(ev.date) ?? [];
       list.push(ev);
       map.set(ev.date, list);
     });
     return Array.from(map.entries());
-  }, [weekEvents]);
+  }, [monthEvents]);
+
+  // 이번달 팔로업일정 — 날짜별 그룹
+  const scheduleGrouped = useMemo(() => {
+    const map = new Map<string, ScheduleItem[]>();
+    schedule.forEach((s) => {
+      const list = map.get(s.date) ?? [];
+      list.push(s);
+      map.set(s.date, list);
+    });
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [schedule]);
 
   return (
     <main style={{ padding: "24px" }}>
@@ -158,54 +198,80 @@ export default function UniversePage() {
             />
           </div>
 
-          {/* 한주 주요 일정 */}
-          <aside style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px" }}>
-            <h2 style={{ fontSize: "15px", fontWeight: 700, margin: "0 0 4px" }}>이번달 주요일정</h2>
-            <p style={{ fontSize: "12px", color: "#9ca3af", margin: "0 0 14px" }}>
-              {formatDateKo(weekStart)} – {formatDateKo(weekEnd)}
-            </p>
+          {/* 오른쪽 컬럼 */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "start" }}>
+            {/* 이번달 주요일정 */}
+            <aside style={sectionStyle}>
+              <h2 style={sectionTitleStyle}>이번달 주요일정</h2>
+              <p style={sectionSubStyle}>{formatDateKo(monthStart)} – {formatDateKo(monthEnd)}</p>
 
-            {weekGrouped.length === 0 ? (
-              <p style={{ fontSize: "13px", color: "#9ca3af" }}>이번달 일정 없음</p>
-            ) : (
-              <div style={{ display: "grid", gap: "12px" }}>
-                {weekGrouped.map(([date, evs]) => (
-                  <div key={date}>
-                    <p style={{ fontSize: "12px", fontWeight: 700, color: "#2563eb", margin: "0 0 6px", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px" }}>
-                      {formatDateKo(date)}
-                    </p>
-                    <div style={{ display: "grid", gap: "6px" }}>
-                      {evs.map((ev) => {
-                        const isChecked = checked.has(ev.id);
-                        return (
-                          <label
-                            key={ev.id}
-                            style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: togglingId ? "wait" : "pointer" }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              disabled={togglingId === ev.id}
-                              onChange={() => void toggleChecked(ev)}
-                              style={{ marginTop: "2px", accentColor: "#2563eb", flexShrink: 0 }}
-                            />
-                            <div style={{ opacity: isChecked ? 0.4 : 1 }}>
-                              <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "#111827", textDecoration: isChecked ? "line-through" : "none" }}>
-                                {ev.companyName}
-                              </p>
-                              <p style={{ margin: 0, fontSize: "11px", color: "#6b7280", textDecoration: isChecked ? "line-through" : "none" }}>
-                                {ev.title.replace(`[${ev.companyName}] `, "")}
-                              </p>
-                            </div>
-                          </label>
-                        );
-                      })}
+              {monthGrouped.length === 0 ? (
+                <p style={{ fontSize: "13px", color: "#9ca3af" }}>일정 없음</p>
+              ) : (
+                <div style={{ display: "grid", gap: "12px" }}>
+                  {monthGrouped.map(([date, evs]) => (
+                    <div key={date}>
+                      <p style={{ fontSize: "12px", fontWeight: 700, color: "#2563eb", margin: "0 0 6px", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px" }}>
+                        {formatDateKo(date)}
+                      </p>
+                      <div style={{ display: "grid", gap: "6px" }}>
+                        {evs.map((ev) => {
+                          const isChecked = checked.has(ev.id);
+                          return (
+                            <label key={ev.id} style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: togglingId ? "wait" : "pointer" }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                disabled={togglingId === ev.id}
+                                onChange={() => void toggleChecked(ev)}
+                                style={{ marginTop: "2px", accentColor: "#2563eb", flexShrink: 0 }}
+                              />
+                              <div style={{ opacity: isChecked ? 0.4 : 1 }}>
+                                <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "#111827", textDecoration: isChecked ? "line-through" : "none" }}>
+                                  {ev.companyName}
+                                </p>
+                                <p style={{ margin: 0, fontSize: "11px", color: "#6b7280", textDecoration: isChecked ? "line-through" : "none" }}>
+                                  {ev.title.replace(`[${ev.companyName}] `, "")}
+                                </p>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </aside>
+                  ))}
+                </div>
+              )}
+            </aside>
+
+            {/* 이번달 팔로업일정 */}
+            <aside style={sectionStyle}>
+              <h2 style={sectionTitleStyle}>이번달 팔로업일정</h2>
+              <p style={sectionSubStyle}>{formatDateKo(monthStart)} – {formatDateKo(monthEnd)}</p>
+
+              {scheduleGrouped.length === 0 ? (
+                <p style={{ fontSize: "13px", color: "#9ca3af" }}>일정 없음</p>
+              ) : (
+                <div style={{ display: "grid", gap: "12px" }}>
+                  {scheduleGrouped.map(([date, items]) => (
+                    <div key={date}>
+                      <p style={{ fontSize: "12px", fontWeight: 700, color: "#7c3aed", margin: "0 0 6px", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px" }}>
+                        {formatDateKo(date)}
+                      </p>
+                      <div style={{ display: "grid", gap: "4px" }}>
+                        {items.map((item) => (
+                          <div key={item.id}>
+                            <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "#111827" }}>{item.companyName}</p>
+                            <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>{item.eventType}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </aside>
+          </div>
         </div>
       )}
     </main>
