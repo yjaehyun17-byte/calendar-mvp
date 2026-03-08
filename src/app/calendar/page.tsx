@@ -875,7 +875,7 @@ export default function CalendarPage() {
                 <span style={{ color: prefixColor, fontWeight: 700, flexShrink: 0 }}>{prefix}</span>
               )}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {arg.timeText && <span style={{ marginRight: "2px" }}>{arg.timeText}</span>}
+                {!arg.view.type.startsWith("list") && arg.timeText && <span style={{ marginRight: "2px" }}>{arg.timeText}</span>}
                 {arg.event.title}
               </span>
             </div>
