@@ -37,11 +37,41 @@ function formatDateKo(dateStr: string) {
   return `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
 }
 
+const CHECKED_KEY = "universe-checked-events";
+
+function loadChecked(): Set<string> {
+  try {
+    const raw = localStorage.getItem(CHECKED_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveChecked(set: Set<string>) {
+  localStorage.setItem(CHECKED_KEY, JSON.stringify([...set]));
+}
+
 export default function UniversePage() {
   const [rawEvents, setRawEvents] = useState<UniverseEvent[]>([]);
   const [calEvents, setCalEvents] = useState<EventInput[]>([]);
   const [tickers, setTickers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setChecked(loadChecked());
+  }, []);
+
+  const toggleChecked = (id: string) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveChecked(next);
+      return next;
+    });
+  };
 
   const { start: weekStart, end: weekEnd } = useMemo(() => getMonthRange(), []);
 
@@ -148,17 +178,31 @@ export default function UniversePage() {
                     <p style={{ fontSize: "12px", fontWeight: 700, color: "#2563eb", margin: "0 0 6px", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px" }}>
                       {formatDateKo(date)}
                     </p>
-                    <div style={{ display: "grid", gap: "4px" }}>
-                      {evs.map((ev) => (
-                        <div key={ev.id} style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
-                          <span style={{ fontSize: "12px", fontWeight: 600, color: "#111827" }}>
-                            {ev.companyName}
-                          </span>
-                          <span style={{ fontSize: "11px", color: "#6b7280" }}>
-                            {ev.title.replace(`[${ev.companyName}] `, "")}
-                          </span>
-                        </div>
-                      ))}
+                    <div style={{ display: "grid", gap: "6px" }}>
+                      {evs.map((ev) => {
+                        const isChecked = checked.has(ev.id);
+                        return (
+                          <label
+                            key={ev.id}
+                            style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer" }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleChecked(ev.id)}
+                              style={{ marginTop: "2px", accentColor: "#2563eb", flexShrink: 0 }}
+                            />
+                            <div style={{ opacity: isChecked ? 0.4 : 1 }}>
+                              <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "#111827", textDecoration: isChecked ? "line-through" : "none" }}>
+                                {ev.companyName}
+                              </p>
+                              <p style={{ margin: 0, fontSize: "11px", color: "#6b7280", textDecoration: isChecked ? "line-through" : "none" }}>
+                                {ev.title.replace(`[${ev.companyName}] `, "")}
+                              </p>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
