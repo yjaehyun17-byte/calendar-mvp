@@ -24,6 +24,14 @@ type ScheduleItem = {
   date: string;
 };
 
+type ChecklistItem = {
+  id: string;
+  ticker: string;
+  companyName: string;
+  content: string;
+  checked: boolean;
+};
+
 type UniverseTicker = { ticker: string; added_at: string };
 
 const TICKER_COLORS = [
@@ -68,6 +76,8 @@ export default function UniversePage() {
   const [calEvents, setCalEvents] = useState<EventInput[]>([]);
   const [tickers, setTickers] = useState<string[]>([]);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
+  const [checklists, setChecklists] = useState<ChecklistItem[]>([]);
+  const [togglingCheckId, setTogglingCheckId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -98,22 +108,25 @@ export default function UniversePage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [evRes, tkRes, chkRes, schRes] = await Promise.all([
+        const [evRes, tkRes, chkRes, schRes, clRes] = await Promise.all([
           fetch("/api/universe/events", { cache: "no-store" }),
           fetch("/api/universe", { cache: "no-store" }),
           fetch("/api/universe/checks", { cache: "no-store" }),
           fetch("/api/universe/schedule", { cache: "no-store" }),
+          fetch("/api/universe/checklists", { cache: "no-store" }),
         ]);
         const evData = (await evRes.json()) as UniverseEvent[];
         const tkData = (await tkRes.json()) as UniverseTicker[];
         const chkData = (await chkRes.json()) as string[];
         const schData = (await schRes.json()) as ScheduleItem[];
+        const clData = (await clRes.json()) as ChecklistItem[];
 
         const tkList = tkData.map((t) => t.ticker);
         setTickers(tkList);
         setRawEvents(evData);
         setChecked(new Set(chkData));
         setSchedule(schData);
+        setChecklists(clData);
 
         const colorMap = new Map<string, string>(
           tkList.map((t, i) => [t, TICKER_COLORS[i % TICKER_COLORS.length]])
@@ -137,6 +150,33 @@ export default function UniversePage() {
     };
     void load();
   }, []);
+
+  const toggleChecklistItem = async (item: ChecklistItem) => {
+    if (togglingCheckId) return;
+    setTogglingCheckId(item.id);
+    try {
+      const res = await fetch("/api/checklists", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, checked: !item.checked }),
+      });
+      const updated = (await res.json()) as ChecklistItem;
+      setChecklists((prev) => prev.map((i) => (i.id === updated.id ? { ...updated, companyName: item.companyName } : i)));
+    } finally {
+      setTogglingCheckId(null);
+    }
+  };
+
+  // 체크리스트 기업별 그룹핑
+  const checklistGrouped = useMemo(() => {
+    const map = new Map<string, { companyName: string; items: ChecklistItem[] }>();
+    checklists.forEach((item) => {
+      const existing = map.get(item.ticker) ?? { companyName: item.companyName, items: [] };
+      existing.items.push(item);
+      map.set(item.ticker, existing);
+    });
+    return Array.from(map.values());
+  }, [checklists]);
 
   // 이번달 주요일정 (타임라인) — 날짜별 그룹
   const monthEvents = useMemo(() =>
@@ -244,26 +284,41 @@ export default function UniversePage() {
               )}
             </aside>
 
-            {/* 이번달 팔로업일정 */}
+            {/* 이번달 팔로업일정 — 기업별 체크리스트 */}
             <aside style={sectionStyle}>
               <h2 style={sectionTitleStyle}>이번달 팔로업일정</h2>
-              <p style={sectionSubStyle}>{formatDateKo(monthStart)} – {formatDateKo(monthEnd)}</p>
+              <p style={sectionSubStyle}>기업별 체크리스트</p>
 
-              {scheduleGrouped.length === 0 ? (
-                <p style={{ fontSize: "13px", color: "#9ca3af" }}>일정 없음</p>
+              {checklistGrouped.length === 0 ? (
+                <p style={{ fontSize: "13px", color: "#9ca3af" }}>체크리스트 없음</p>
               ) : (
-                <div style={{ display: "grid", gap: "12px" }}>
-                  {scheduleGrouped.map(([date, items]) => (
-                    <div key={date}>
+                <div style={{ display: "grid", gap: "14px" }}>
+                  {checklistGrouped.map(({ companyName, items }) => (
+                    <div key={companyName}>
                       <p style={{ fontSize: "12px", fontWeight: 700, color: "#7c3aed", margin: "0 0 6px", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px" }}>
-                        {formatDateKo(date)}
+                        {companyName}
                       </p>
-                      <div style={{ display: "grid", gap: "4px" }}>
+                      <div style={{ display: "grid", gap: "5px" }}>
                         {items.map((item) => (
-                          <div key={item.id}>
-                            <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "#111827" }}>{item.companyName}</p>
-                            <p style={{ margin: 0, fontSize: "11px", color: "#6b7280" }}>{item.eventType}</p>
-                          </div>
+                          <label
+                            key={item.id}
+                            style={{ display: "flex", alignItems: "center", gap: "7px", cursor: togglingCheckId ? "wait" : "pointer" }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={item.checked}
+                              disabled={togglingCheckId === item.id}
+                              onChange={() => void toggleChecklistItem(item)}
+                              style={{ accentColor: "#7c3aed", flexShrink: 0 }}
+                            />
+                            <span style={{
+                              fontSize: "12px",
+                              color: item.checked ? "#9ca3af" : "#374151",
+                              textDecoration: item.checked ? "line-through" : "none",
+                            }}>
+                              {item.content}
+                            </span>
+                          </label>
                         ))}
                       </div>
                     </div>
