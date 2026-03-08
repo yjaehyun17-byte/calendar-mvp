@@ -112,33 +112,27 @@ export async function GET(request: Request) {
   const currentPrice = priceHistory.at(-1)?.close ?? null;
   const prevPrice = priceHistory.at(-2)?.close ?? null;
   const changePct = currentPrice && prevPrice ? ((currentPrice - prevPrice) / prevPrice) * 100 : null;
-  // 시가총액: 발행주식수 × 현재가 (연간 재무 rowList에서 추출)
+  // 시가총액: 네이버 연간 재무 rowList의 시가총액 행에서 직접 추출 (단위: 억원)
   const annualFi = (annualData as NaverFinanceResponse | null)?.financeInfo;
   let marketCap: number | null = null;
 
-  if (annualFi && currentPrice) {
+  if (annualFi) {
     const confirmedPeriods = annualFi.trTitleList.filter((t) => t.isConsensus === "N");
     const latestPeriod = confirmedPeriods.at(-1);
     if (latestPeriod) {
-      const sharesRow = annualFi.rowList.find((r) =>
-        r.title === "발행주식수" || r.title === "상장주식수"
-      );
-      if (sharesRow) {
-        // 발행주식수 단위: 천주 → 실제 주식 수로 변환 (×1,000)
-        const shares = parseNaverValue(sharesRow, latestPeriod.key, 1_000);
-        if (shares && shares > 0) {
-          marketCap = currentPrice * shares;
-        }
+      const mcapRow = annualFi.rowList.find((r) => r.title === "시가총액");
+      if (mcapRow) {
+        // 단위: 억원 → 원
+        marketCap = parseNaverValue(mcapRow, latestPeriod.key, 100_000_000);
       }
-      // fallback: 순이익 / EPS 로 발행주식수 추정
-      if (!marketCap) {
-        const niRow = annualFi.rowList.find((r) => r.title === "당기순이익");
-        const epsRow = annualFi.rowList.find((r) => r.title === "EPS");
-        const ni = parseNaverValue(niRow, latestPeriod.key, 100_000_000);
-        const eps = parseNaverValue(epsRow, latestPeriod.key, 1);
-        if (ni && eps && eps > 0) {
-          const impliedShares = ni / eps;
-          marketCap = currentPrice * impliedShares;
+      // fallback: 발행주식수 × 현재가
+      if (!marketCap && currentPrice) {
+        const sharesRow = annualFi.rowList.find((r) =>
+          r.title === "발행주식수" || r.title === "상장주식수"
+        );
+        if (sharesRow) {
+          const shares = parseNaverValue(sharesRow, latestPeriod.key, 1_000);
+          if (shares && shares > 0) marketCap = currentPrice * shares;
         }
       }
     }
