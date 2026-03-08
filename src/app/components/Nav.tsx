@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/calendar", label: "캘린더" },
   { href: "/followup", label: "팔로업" },
+  { href: "/universe", label: "유니버스" },
 ];
 
 export default function Nav() {
