@@ -134,4 +134,10 @@ body {
     color: var(--foreground) !important;
     font-weight: 500;
   }
+
+  /* 지난 일정 흐리게 표시 */
+  .calendar-page .fc-list-event.fc-event-past td {
+    color: #9ca3af !important;
+    opacity: 0.7;
+  }
 }
