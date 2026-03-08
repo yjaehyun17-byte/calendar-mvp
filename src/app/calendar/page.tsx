@@ -889,6 +889,20 @@ export default function CalendarPage() {
           const prefix = isPM ? "오후" : "오전";
           return m === 0 ? `${prefix}${h12}시` : `${prefix}${h12}시${String(m).padStart(2, "0")}분`;
         }}
+        eventDidMount={(info) => {
+          if (info.view.type.startsWith("list")) {
+            const timeEl = info.el.querySelector(".fc-list-event-time");
+            if (timeEl && info.event.start) {
+              const start = info.event.start;
+              const h = start.getHours();
+              const m = start.getMinutes();
+              const isPM = h >= 12;
+              const h12 = h % 12 || 12;
+              const prefix = isPM ? "오후" : "오전";
+              timeEl.textContent = m === 0 ? `${prefix}${h12}시` : `${prefix}${h12}시${String(m).padStart(2, "0")}분`;
+            }
+          }
+        }}
         selectable
         editable
         selectMirror
