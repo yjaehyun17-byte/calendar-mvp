@@ -3,10 +3,15 @@ create table if not exists public.company_memos (
   ticker text not null,
   visit_date date not null,
   summary text not null default '',
+  timeline jsonb not null default '[]',
   details text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- 이미 테이블이 있는 경우 timeline 컬럼만 추가
+alter table public.company_memos
+  add column if not exists timeline jsonb not null default '[]';
 
 create index if not exists idx_company_memos_ticker on public.company_memos(ticker);
 

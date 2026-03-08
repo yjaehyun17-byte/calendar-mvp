@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("company_memos")
-    .select("id,ticker,visit_date,summary,details")
+    .select("id,ticker,visit_date,summary,timeline,details")
     .eq("ticker", ticker)
     .order("visit_date", { ascending: false });
 
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     ticker: string;
     visit_date: string;
     summary: string;
+    timeline: { date: string; content: string }[];
     details: string;
   };
 
@@ -40,9 +41,10 @@ export async function POST(request: Request) {
       ticker: body.ticker,
       visit_date: body.visit_date,
       summary: body.summary?.trim() ?? "",
+      timeline: Array.isArray(body.timeline) ? body.timeline : [],
       details: body.details?.trim() ?? "",
     })
-    .select("id,ticker,visit_date,summary,details")
+    .select("id,ticker,visit_date,summary,timeline,details")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

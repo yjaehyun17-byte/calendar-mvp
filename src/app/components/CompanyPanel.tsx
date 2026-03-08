@@ -291,7 +291,10 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-type MemoRow = { id: string; ticker: string; visit_date: string; summary: string; details: string };
+type TimelineEntry = { date: string; content: string };
+type MemoRow = { id: string; ticker: string; visit_date: string; summary: string; timeline: TimelineEntry[]; details: string };
+
+const emptyForm = () => ({ visit_date: "", summary: "", timeline: [] as TimelineEntry[], details: "" });
 
 function MemosSection({ ticker }: { ticker: string }) {
   const [rows, setRows] = useState<MemoRow[]>([]);
@@ -299,7 +302,9 @@ function MemosSection({ ticker }: { ticker: string }) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [form, setForm] = useState({ visit_date: "", summary: "", details: "" });
+  const [form, setForm] = useState<ReturnType<typeof emptyForm>>(emptyForm());
+  // 타임라인 입력 임시 상태
+  const [tlInput, setTlInput] = useState({ date: "", content: "" });
 
   const load = async () => {
     setIsLoading(true);
@@ -316,6 +321,16 @@ function MemosSection({ ticker }: { ticker: string }) {
 
   useEffect(() => { void load(); }, [ticker]);
 
+  const addTimelineEntry = () => {
+    if (!tlInput.date && !tlInput.content) return;
+    setForm((f) => ({ ...f, timeline: [...f.timeline, { date: tlInput.date, content: tlInput.content }] }));
+    setTlInput({ date: "", content: "" });
+  };
+
+  const removeTimelineEntry = (idx: number) => {
+    setForm((f) => ({ ...f, timeline: f.timeline.filter((_, i) => i !== idx) }));
+  };
+
   const handleSave = async () => {
     if (!form.visit_date) return;
     setSaving(true);
@@ -325,7 +340,8 @@ function MemosSection({ ticker }: { ticker: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticker, ...form }),
       });
-      setForm({ visit_date: "", summary: "", details: "" });
+      setForm(emptyForm());
+      setTlInput({ date: "", content: "" });
       setShowForm(false);
       await load();
     } finally {
@@ -342,10 +358,10 @@ function MemosSection({ ticker }: { ticker: string }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-        <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>탐방 메모</p>
+        <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>기업 팔로업</p>
         <button
           type="button"
-          onClick={() => setShowForm((v) => !v)}
+          onClick={() => { setShowForm((v) => !v); setForm(emptyForm()); setTlInput({ date: "", content: "" }); }}
           style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", color: "#374151" }}
         >
           {showForm ? "취소" : "+ 추가"}
@@ -353,7 +369,8 @@ function MemosSection({ ticker }: { ticker: string }) {
       </div>
 
       {showForm && (
-        <div style={{ background: "#f9fafb", borderRadius: "8px", padding: "10px", marginBottom: "8px", display: "grid", gap: "6px" }}>
+        <div style={{ background: "#f9fafb", borderRadius: "8px", padding: "10px", marginBottom: "8px", display: "grid", gap: "8px" }}>
+          {/* 날짜 */}
           <div>
             <label style={{ fontSize: "11px", color: "#6b7280" }}>날짜</label>
             <input
@@ -363,6 +380,8 @@ function MemosSection({ ticker }: { ticker: string }) {
               style={inputStyle}
             />
           </div>
+
+          {/* 주요내용 */}
           <div>
             <label style={{ fontSize: "11px", color: "#6b7280" }}>주요내용</label>
             <input
@@ -372,6 +391,52 @@ function MemosSection({ ticker }: { ticker: string }) {
               style={inputStyle}
             />
           </div>
+
+          {/* 주요 타임라인 */}
+          <div>
+            <label style={{ fontSize: "11px", color: "#6b7280" }}>주요 타임라인</label>
+            {form.timeline.length > 0 && (
+              <div style={{ display: "grid", gap: "4px", marginBottom: "6px", marginTop: "4px" }}>
+                {form.timeline.map((entry, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "4px 8px" }}>
+                    <span style={{ fontSize: "11px", color: "#6b7280", whiteSpace: "nowrap" }}>{entry.date}</span>
+                    <span style={{ fontSize: "12px", color: "#374151", flex: 1 }}>{entry.content}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeTimelineEntry(idx)}
+                      style={{ fontSize: "11px", color: "#9ca3af", border: "none", background: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: "4px", alignItems: "center" }}>
+              <input
+                type="date"
+                value={tlInput.date}
+                onChange={(e) => setTlInput((t) => ({ ...t, date: e.target.value }))}
+                style={{ ...inputStyle, width: "auto" }}
+              />
+              <input
+                value={tlInput.content}
+                onChange={(e) => setTlInput((t) => ({ ...t, content: e.target.value }))}
+                placeholder="내용 입력"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTimelineEntry(); } }}
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={addTimelineEntry}
+                style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid #2563eb", background: "#eff6ff", color: "#2563eb", fontSize: "11px", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                추가
+              </button>
+            </div>
+          </div>
+
+          {/* 상세내용 */}
           <div>
             <label style={{ fontSize: "11px", color: "#6b7280" }}>상세내용</label>
             <textarea
@@ -382,6 +447,7 @@ function MemosSection({ ticker }: { ticker: string }) {
               style={{ ...inputStyle, resize: "vertical" }}
             />
           </div>
+
           <button
             type="button"
             onClick={() => void handleSave()}
@@ -396,7 +462,7 @@ function MemosSection({ ticker }: { ticker: string }) {
       {isLoading ? (
         <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>불러오는 중...</p>
       ) : rows.length === 0 ? (
-        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>메모 없음</p>
+        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>팔로업 내용 없음</p>
       ) : (
         <div style={{ display: "grid", gap: "6px" }}>
           {rows.map((r) => (
@@ -414,16 +480,32 @@ function MemosSection({ ticker }: { ticker: string }) {
                 <span style={{ fontSize: "11px", color: "#9ca3af", marginLeft: "8px" }}>{expanded === r.id ? "▲" : "▼"}</span>
               </div>
               {expanded === r.id && (
-                <div style={{ padding: "8px 10px", borderTop: "1px solid #e5e7eb", background: "#fafafa" }}>
-                  {r.details ? (
-                    <p style={{ margin: "0 0 8px", fontSize: "12px", color: "#374151", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{r.details}</p>
-                  ) : (
-                    <p style={{ margin: "0 0 8px", fontSize: "12px", color: "#9ca3af" }}>(상세내용 없음)</p>
+                <div style={{ padding: "10px", borderTop: "1px solid #e5e7eb", background: "#fafafa", display: "grid", gap: "8px" }}>
+                  {/* 타임라인 */}
+                  {r.timeline?.length > 0 && (
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 600, color: "#6b7280" }}>주요 타임라인</p>
+                      <div style={{ display: "grid", gap: "3px", borderLeft: "2px solid #2563eb", paddingLeft: "8px" }}>
+                        {r.timeline.map((entry, idx) => (
+                          <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "12px" }}>
+                            <span style={{ color: "#6b7280", whiteSpace: "nowrap" }}>{entry.date}</span>
+                            <span style={{ color: "#374151" }}>{entry.content}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* 상세내용 */}
+                  {r.details && (
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 600, color: "#6b7280" }}>상세내용</p>
+                      <p style={{ margin: 0, fontSize: "12px", color: "#374151", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{r.details}</p>
+                    </div>
                   )}
                   <button
                     type="button"
                     onClick={() => void handleDelete(r.id)}
-                    style={{ fontSize: "11px", color: "#ef4444", border: "none", background: "none", cursor: "pointer", padding: 0 }}
+                    style={{ fontSize: "11px", color: "#ef4444", border: "none", background: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
                   >
                     삭제
                   </button>
