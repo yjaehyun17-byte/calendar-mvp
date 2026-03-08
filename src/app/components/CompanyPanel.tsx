@@ -311,7 +311,7 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
 
   // period 변경 시 차트 데이터만 재조회
   useEffect(() => {
-    if (!detail || period === "1d") return;
+    if (!detail) return;
     setIsChartLoading(true);
     fetch(`/api/company-detail?ticker=${encodeURIComponent(ticker)}&period=${period}`, { cache: "no-store" })
       .then((r) => r.json())
