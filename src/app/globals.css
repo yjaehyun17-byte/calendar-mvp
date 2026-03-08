@@ -116,10 +116,22 @@ body {
   .calendar-page .fc-list-event td {
     font-size: 14px;
     padding: 8px 6px;
+    color: var(--foreground) !important;
   }
 
+  /* 리스트 뷰 날짜 헤더 */
   .calendar-page .fc-list-day-cushion {
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 700;
     padding: 6px 8px;
+    color: var(--foreground) !important;
+    background: var(--background) !important;
+    border-bottom: 2px solid #2563eb;
+  }
+
+  /* 리스트 뷰 이벤트 제목 */
+  .calendar-page .fc-list-event-title {
+    color: var(--foreground) !important;
+    font-weight: 500;
   }
 }

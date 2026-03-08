@@ -888,7 +888,7 @@ export default function CalendarPage() {
                 <span style={{ color: prefixColor, fontWeight: 700, flexShrink: 0 }}>{prefix}</span>
               )}
               {isList && listTime && (
-                <span style={{ flexShrink: 0, color: "#374151" }}>{listTime}</span>
+                <span style={{ flexShrink: 0, fontWeight: 600 }}>{listTime}</span>
               )}
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {!isList && arg.timeText && <span style={{ marginRight: "2px" }}>{arg.timeText}</span>}
