@@ -5,6 +5,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import koLocale from "@fullcalendar/core/locales/ko";
 import type {
   DateSelectArg,
   EventApi,
@@ -852,6 +853,8 @@ export default function CalendarPage() {
           : [dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={isMobile ? "listMonth" : "dayGridMonth"}
         key={isMobile ? "mobile" : "desktop"}
+        locale={isMobile ? koLocale : undefined}
+        displayEventEnd={false}
         headerToolbar={isMobile
           ? { left: "prev,next", center: "title", right: "today" }
           : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
