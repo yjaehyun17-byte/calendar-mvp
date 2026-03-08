@@ -132,5 +132,6 @@ export async function GET(request: Request) {
     priceHistory,
     annualFinancials: parseNaverFinanceData(annualData, true),
     quarterlyFinancials: parseNaverFinanceData(quarterData, true),
+    _debug_basicData: basicData,
   });
 }
