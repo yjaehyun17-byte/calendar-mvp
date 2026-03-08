@@ -37,40 +37,33 @@ function formatDateKo(dateStr: string) {
   return `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
 }
 
-const CHECKED_KEY = "universe-checked-events";
-
-function loadChecked(): Set<string> {
-  try {
-    const raw = localStorage.getItem(CHECKED_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveChecked(set: Set<string>) {
-  localStorage.setItem(CHECKED_KEY, JSON.stringify([...set]));
-}
-
 export default function UniversePage() {
   const [rawEvents, setRawEvents] = useState<UniverseEvent[]>([]);
   const [calEvents, setCalEvents] = useState<EventInput[]>([]);
   const [tickers, setTickers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    setChecked(loadChecked());
-  }, []);
-
-  const toggleChecked = (id: string) => {
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      saveChecked(next);
-      return next;
-    });
+  const toggleChecked = async (ev: UniverseEvent) => {
+    if (togglingId) return;
+    setTogglingId(ev.id);
+    try {
+      const res = await fetch("/api/universe/checks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: ev.id, ticker: ev.ticker }),
+      });
+      const { checked: isChecked } = (await res.json()) as { checked: boolean };
+      setChecked((prev) => {
+        const next = new Set(prev);
+        if (isChecked) next.add(ev.id);
+        else next.delete(ev.id);
+        return next;
+      });
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const { start: weekStart, end: weekEnd } = useMemo(() => getMonthRange(), []);
@@ -78,12 +71,15 @@ export default function UniversePage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [evRes, tkRes] = await Promise.all([
+        const [evRes, tkRes, chkRes] = await Promise.all([
           fetch("/api/universe/events", { cache: "no-store" }),
           fetch("/api/universe", { cache: "no-store" }),
+          fetch("/api/universe/checks", { cache: "no-store" }),
         ]);
         const evData = (await evRes.json()) as UniverseEvent[];
         const tkData = (await tkRes.json()) as UniverseTicker[];
+        const chkData = (await chkRes.json()) as string[];
+        setChecked(new Set(chkData));
 
         const tkList = tkData.map((t) => t.ticker);
         setTickers(tkList);
@@ -184,12 +180,13 @@ export default function UniversePage() {
                         return (
                           <label
                             key={ev.id}
-                            style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: "pointer" }}
+                            style={{ display: "flex", alignItems: "flex-start", gap: "8px", cursor: togglingId ? "wait" : "pointer" }}
                           >
                             <input
                               type="checkbox"
                               checked={isChecked}
-                              onChange={() => toggleChecked(ev.id)}
+                              disabled={togglingId === ev.id}
+                              onChange={() => void toggleChecked(ev)}
                               style={{ marginTop: "2px", accentColor: "#2563eb", flexShrink: 0 }}
                             />
                             <div style={{ opacity: isChecked ? 0.4 : 1 }}>
