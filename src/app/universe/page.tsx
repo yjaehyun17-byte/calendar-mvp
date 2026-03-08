@@ -199,7 +199,7 @@ export default function UniversePage() {
           </div>
 
           {/* 오른쪽 컬럼 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: "16px" }}>
             {/* 이번달 주요일정 */}
             <aside style={sectionStyle}>
               <h2 style={sectionTitleStyle}>이번달 주요일정</h2>
