@@ -30,7 +30,16 @@ function formatEPS(v: number | null): string {
   return v.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
 }
 
-function PriceChart({ data }: { data: PricePoint[] }) {
+type ChartPeriod = "1d" | "1wk" | "1mo";
+
+const PERIOD_LABELS: Record<ChartPeriod, string> = { "1d": "일봉", "1wk": "주봉", "1mo": "월봉" };
+
+function formatChartDate(date: string, period: ChartPeriod): string {
+  if (period === "1mo") return date.slice(0, 7); // YYYY-MM
+  return date.slice(5); // MM-DD
+}
+
+function PriceChart({ data, period }: { data: PricePoint[]; period: ChartPeriod }) {
   if (data.length < 2) return <p style={{ color: "#9ca3af", fontSize: "13px" }}>차트 데이터 없음</p>;
 
   const W = 400;
@@ -48,10 +57,7 @@ function PriceChart({ data }: { data: PricePoint[] }) {
   const y = (v: number) => PAD.top + (1 - (v - min) / range) * innerH;
 
   const pathD = data.map((d, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(d.close).toFixed(1)}`).join(" ");
-  const first = closes[0];
-  const last = closes[closes.length - 1];
-  const color = last >= first ? "#dc2626" : "#2563eb";
-
+  const color = closes[closes.length - 1] >= closes[0] ? "#dc2626" : "#2563eb";
   const labelIndices = [0, Math.floor(data.length / 3), Math.floor((data.length * 2) / 3), data.length - 1];
 
   return (
@@ -62,7 +68,7 @@ function PriceChart({ data }: { data: PricePoint[] }) {
       <path d={pathD} fill="none" stroke={color} strokeWidth="1.5" />
       {labelIndices.map((idx) => (
         <text key={idx} x={x(idx)} y={H - 4} textAnchor="middle" fontSize="8" fill="#9ca3af">
-          {data[idx].date.slice(5)}
+          {formatChartDate(data[idx].date, period)}
         </text>
       ))}
     </svg>
@@ -287,17 +293,33 @@ const inputStyle: React.CSSProperties = {
 export default function CompanyPanel({ ticker, onClose }: { ticker: string; onClose: () => void }) {
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isChartLoading, setIsChartLoading] = useState(false);
   const [tab, setTab] = useState<"annual" | "quarterly">("annual");
+  const [period, setPeriod] = useState<ChartPeriod>("1d");
 
+  // 티커 변경 시 전체 데이터 재조회
   useEffect(() => {
     setIsLoading(true);
     setDetail(null);
-    fetch(`/api/company-detail?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" })
+    setPeriod("1d");
+    fetch(`/api/company-detail?ticker=${encodeURIComponent(ticker)}&period=1d`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setDetail(d as CompanyDetail))
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [ticker]);
+
+  // period 변경 시 차트 데이터만 재조회
+  useEffect(() => {
+    if (!detail || period === "1d") return;
+    setIsChartLoading(true);
+    fetch(`/api/company-detail?ticker=${encodeURIComponent(ticker)}&period=${period}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setDetail((prev) => prev ? { ...prev, priceHistory: (d as CompanyDetail).priceHistory } : prev))
+      .catch(console.error)
+      .finally(() => setIsChartLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
 
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", display: "grid", gap: "14px", maxHeight: "80vh", overflowY: "auto" }}>
@@ -330,8 +352,35 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
         <>
           {/* 주가 차트 */}
           <div>
-            <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "13px" }}>주가 차트 (1년)</p>
-            <PriceChart data={detail.priceHistory} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>주가 차트</p>
+              <div style={{ display: "flex", gap: "4px" }}>
+                {(["1d", "1wk", "1mo"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPeriod(p)}
+                    style={{
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      fontWeight: period === p ? 700 : 400,
+                      border: period === p ? "2px solid #2563eb" : "1px solid #d1d5db",
+                      background: period === p ? "#eff6ff" : "#fff",
+                      color: period === p ? "#2563eb" : "#6b7280",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {PERIOD_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {isChartLoading ? (
+              <p style={{ color: "#9ca3af", fontSize: "13px", margin: 0 }}>차트 불러오는 중...</p>
+            ) : (
+              <PriceChart data={detail.priceHistory} period={period} />
+            )}
           </div>
 
           {/* 실적 탭 */}

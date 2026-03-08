@@ -61,10 +61,19 @@ function parseNaverFinanceData(data: unknown, onlyConfirmed: boolean) {
   }));
 }
 
+const PERIOD_CONFIG: Record<string, { interval: string; lookbackDays: number }> = {
+  "1d":  { interval: "1d",  lookbackDays: 30 },
+  "1wk": { interval: "1wk", lookbackDays: 180 },
+  "1mo": { interval: "1mo", lookbackDays: 730 },
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const ticker = searchParams.get("ticker")?.trim();
   if (!ticker) return NextResponse.json({ error: "ticker required" }, { status: 400 });
+
+  const period = searchParams.get("period") ?? "1d";
+  const { interval, lookbackDays } = PERIOD_CONFIG[period] ?? PERIOD_CONFIG["1d"];
 
   const supabase = getServerSupabaseClient();
   const { data: company } = supabase
@@ -76,11 +85,11 @@ export async function GET(request: Request) {
   const naverHeaders = { Referer: "https://m.stock.naver.com/" };
 
   const now = Math.floor(Date.now() / 1000);
-  const oneYearAgo = now - 365 * 24 * 3600;
+  const periodStart = now - lookbackDays * 24 * 3600;
 
   const [chartData, annualData, quarterData] = await Promise.all([
     safeFetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=1d&period1=${oneYearAgo}&period2=${now}`
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&period1=${periodStart}&period2=${now}`
     ),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/annual`, naverHeaders),
     safeFetch(`https://m.stock.naver.com/api/stock/${ticker}/finance/quarter`, naverHeaders),
