@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type PricePoint = { date: string; close: number };
 type FinancialRow = { period: string; revenue: number | null; operatingIncome: number | null; netIncome: number | null; eps: number | null };
@@ -296,10 +296,14 @@ type MemoRow = { id: string; ticker: string; visit_date: string; summary: string
 
 const emptyForm = () => ({ visit_date: "", summary: "", timeline: [] as TimelineEntry[], details: "" });
 
-function MemosSection({ ticker }: { ticker: string }) {
+function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forceOpen?: boolean; onFormClose?: () => void }) {
   const [rows, setRows] = useState<MemoRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    if (forceOpen) setShowForm(true);
+  }, [forceOpen]);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [form, setForm] = useState<ReturnType<typeof emptyForm>>(emptyForm());
@@ -343,6 +347,7 @@ function MemosSection({ ticker }: { ticker: string }) {
       setForm(emptyForm());
       setTlInput({ date: "", content: "" });
       setShowForm(false);
+      onFormClose?.();
       await load();
     } finally {
       setSaving(false);
@@ -361,7 +366,7 @@ function MemosSection({ ticker }: { ticker: string }) {
         <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>기업 팔로업</p>
         <button
           type="button"
-          onClick={() => { setShowForm((v) => !v); setForm(emptyForm()); setTlInput({ date: "", content: "" }); }}
+          onClick={() => { const next = !showForm; setShowForm(next); if (!next) { setForm(emptyForm()); setTlInput({ date: "", content: "" }); onFormClose?.(); } }}
           style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", color: "#374151" }}
         >
           {showForm ? "취소" : "+ 추가"}
@@ -525,6 +530,8 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [tab, setTab] = useState<"annual" | "quarterly">("annual");
   const [period, setPeriod] = useState<ChartPeriod>("1d");
+  const [memoFormOpen, setMemoFormOpen] = useState(false);
+  const memosSectionRef = useRef<HTMLDivElement>(null);
 
   // 티커 변경 시 전체 데이터 재조회
   useEffect(() => {
@@ -559,13 +566,23 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
             <p style={{ margin: 0, color: "#6b7280" }}>불러오는 중...</p>
           ) : detail ? (
             <>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>{detail.companyName}</h2>
                 {detail.marketCap !== null && (
                   <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>
                     시총 {formatKRW(detail.marketCap)}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMemoFormOpen(true);
+                    setTimeout(() => memosSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                  }}
+                  style={{ fontSize: "11px", padding: "3px 10px", borderRadius: "6px", border: "1px solid #2563eb", background: "#eff6ff", color: "#2563eb", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                >
+                  팔로업하기
+                </button>
               </div>
               <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>{detail.ticker} · {detail.market}</p>
               {detail.currentPrice !== null && (
@@ -651,8 +668,10 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
           {/* 추정치 */}
           <EstimatesSection ticker={ticker} />
 
-          {/* 탐방 메모 */}
-          <MemosSection ticker={ticker} />
+          {/* 기업 팔로업 */}
+          <div ref={memosSectionRef}>
+            <MemosSection ticker={ticker} forceOpen={memoFormOpen} onFormClose={() => setMemoFormOpen(false)} />
+          </div>
         </>
       )}
     </div>
