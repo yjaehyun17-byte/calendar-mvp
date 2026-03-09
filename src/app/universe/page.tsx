@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import MemoModal from "../components/MemoModal";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import listPlugin from "@fullcalendar/list";
@@ -81,6 +82,7 @@ export default function UniversePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [memoTarget, setMemoTarget] = useState<{ ticker: string; companyName: string; defaultDate?: string } | null>(null);
 
   const { start: monthStart, end: monthEnd } = useMemo(() => getMonthRange(), []);
 
@@ -100,6 +102,9 @@ export default function UniversePage() {
         else next.delete(ev.id);
         return next;
       });
+      if (isChecked) {
+        setMemoTarget({ ticker: ev.ticker, companyName: ev.companyName, defaultDate: ev.date });
+      }
     } finally {
       setTogglingId(null);
     }
@@ -162,6 +167,9 @@ export default function UniversePage() {
       });
       const updated = (await res.json()) as ChecklistItem;
       setChecklists((prev) => prev.map((i) => (i.id === updated.id ? { ...updated, companyName: item.companyName } : i)));
+      if (updated.checked) {
+        setMemoTarget({ ticker: item.ticker, companyName: item.companyName });
+      }
     } finally {
       setTogglingCheckId(null);
     }
@@ -208,6 +216,14 @@ export default function UniversePage() {
 
   return (
     <main style={{ padding: "24px" }}>
+      {memoTarget && (
+        <MemoModal
+          ticker={memoTarget.ticker}
+          companyName={memoTarget.companyName}
+          defaultDate={memoTarget.defaultDate}
+          onClose={() => setMemoTarget(null)}
+        />
+      )}
       <h1 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "8px" }}>유니버스</h1>
 
       {tickers.length > 0 && (

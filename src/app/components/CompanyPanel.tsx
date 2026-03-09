@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import MemoModal from "./MemoModal";
 
 type PricePoint = { date: string; close: number };
 type FinancialRow = { period: string; revenue: number | null; operatingIncome: number | null; netIncome: number | null; eps: number | null };
@@ -528,11 +529,12 @@ function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forc
 
 type ChecklistItem = { id: string; ticker: string; content: string; checked: boolean };
 
-function ChecklistSection({ ticker }: { ticker: string }) {
+function ChecklistSection({ ticker, companyName }: { ticker: string; companyName: string }) {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [memoTarget, setMemoTarget] = useState<{ ticker: string; companyName: string } | null>(null);
 
   const load = async () => {
     setIsLoading(true);
@@ -574,6 +576,9 @@ function ChecklistSection({ ticker }: { ticker: string }) {
     });
     const updated = (await res.json()) as ChecklistItem;
     setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    if (updated.checked) {
+      setMemoTarget({ ticker, companyName });
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -584,6 +589,14 @@ function ChecklistSection({ ticker }: { ticker: string }) {
   const done = items.filter((i) => i.checked).length;
 
   return (
+    <>
+    {memoTarget && (
+      <MemoModal
+        ticker={memoTarget.ticker}
+        companyName={memoTarget.companyName}
+        onClose={() => setMemoTarget(null)}
+      />
+    )}
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
         <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>체크리스트</p>
@@ -645,6 +658,7 @@ function ChecklistSection({ ticker }: { ticker: string }) {
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -838,7 +852,7 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
           </div>
 
           {/* 체크리스트 */}
-          <ChecklistSection ticker={ticker} />
+          <ChecklistSection ticker={ticker} companyName={detail.companyName} />
         </>
       )}
     </div>
