@@ -3,6 +3,21 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* 공통 컬러 토큰 */
+  --color-text-primary: #111827;
+  --color-text-secondary: #374151;
+  --color-text-muted: #6b7280;
+  --color-text-faint: #9ca3af;
+  --color-bg-card: #ffffff;
+  --color-bg-subtle: #f9fafb;
+  --color-bg-row: #f3f4f6;
+  --color-border: #e5e7eb;
+  --color-border-light: #d1d5db;
+  --color-blue-bg: #eff6ff;
+  --color-green-bg: #f0fdf4;
+  --color-memo-expanded: #eff6ff;
+  --color-memo-detail-bg: #fafafa;
 }
 
 @theme inline {
@@ -16,6 +31,20 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    --color-text-primary: #f9fafb;
+    --color-text-secondary: #d1d5db;
+    --color-text-muted: #9ca3af;
+    --color-text-faint: #6b7280;
+    --color-bg-card: #1f2937;
+    --color-bg-subtle: #1a2535;
+    --color-bg-row: #1e2d3d;
+    --color-border: #374151;
+    --color-border-light: #4b5563;
+    --color-blue-bg: #1e3a5f;
+    --color-green-bg: #14532d;
+    --color-memo-expanded: #1e3a5f;
+    --color-memo-detail-bg: #111827;
   }
 }
 

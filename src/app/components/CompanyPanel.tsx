@@ -41,7 +41,7 @@ function formatChartDate(date: string, period: ChartPeriod): string {
 }
 
 function PriceChart({ data, period }: { data: PricePoint[]; period: ChartPeriod }) {
-  if (data.length < 2) return <p style={{ color: "#9ca3af", fontSize: "13px" }}>차트 데이터 없음</p>;
+  if (data.length < 2) return <p style={{ color: "var(--color-text-faint)", fontSize: "13px" }}>차트 데이터 없음</p>;
 
   const W = 400;
   const H = 110;
@@ -77,14 +77,14 @@ function PriceChart({ data, period }: { data: PricePoint[]; period: ChartPeriod 
 }
 
 function FinancialsTable({ rows, title }: { rows: FinancialRow[]; title: string }) {
-  if (rows.length === 0) return <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>데이터 없음</p>;
+  if (rows.length === 0) return <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>데이터 없음</p>;
   return (
     <div>
       <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: "13px" }}>{title}</p>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
           <thead>
-            <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+            <tr style={{ background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border)" }}>
               <th style={thStyle}>기간</th>
               <th style={thStyle}>매출</th>
               <th style={thStyle}>영업이익</th>
@@ -94,11 +94,11 @@ function FinancialsTable({ rows, title }: { rows: FinancialRow[]; title: string 
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.period} style={{ borderBottom: "1px solid #f3f4f6" }}>
+              <tr key={r.period} style={{ borderBottom: "1px solid var(--color-bg-row)" }}>
                 <td style={tdStyle}>{r.period}</td>
                 <td style={tdStyle}>{formatKRW(r.revenue)}</td>
-                <td style={{ ...tdStyle, color: r.operatingIncome !== null ? (r.operatingIncome >= 0 ? "#dc2626" : "#2563eb") : "#6b7280" }}>{formatKRW(r.operatingIncome)}</td>
-                <td style={{ ...tdStyle, color: r.netIncome !== null ? (r.netIncome >= 0 ? "#dc2626" : "#2563eb") : "#6b7280" }}>{formatKRW(r.netIncome)}</td>
+                <td style={{ ...tdStyle, color: r.operatingIncome !== null ? (r.operatingIncome >= 0 ? "#dc2626" : "#2563eb") : "var(--color-text-muted)" }}>{formatKRW(r.operatingIncome)}</td>
+                <td style={{ ...tdStyle, color: r.netIncome !== null ? (r.netIncome >= 0 ? "#dc2626" : "#2563eb") : "var(--color-text-muted)" }}>{formatKRW(r.netIncome)}</td>
                 <td style={tdStyle}>{formatEPS(r.eps)}</td>
               </tr>
             ))}
@@ -109,8 +109,8 @@ function FinancialsTable({ rows, title }: { rows: FinancialRow[]; title: string 
   );
 }
 
-const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontWeight: 600, color: "#374151", whiteSpace: "nowrap" };
-const tdStyle: React.CSSProperties = { padding: "6px 8px", color: "#374151", whiteSpace: "nowrap" };
+const thStyle: React.CSSProperties = { padding: "6px 8px", textAlign: "left", fontWeight: 600, color: "var(--color-text-secondary)", whiteSpace: "nowrap" };
+const tdStyle: React.CSSProperties = { padding: "6px 8px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" };
 
 function EstimatesSection({ ticker }: { ticker: string }) {
   const [rows, setRows] = useState<EstimateRow[]>([]);
@@ -170,17 +170,17 @@ function EstimatesSection({ ticker }: { ticker: string }) {
         <button
           type="button"
           onClick={() => setShowForm((v) => !v)}
-          style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", color: "#374151" }}
+          style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px", border: "1px solid var(--color-border-light)", background: "var(--color-bg-card)", cursor: "pointer", color: "var(--color-text-secondary)" }}
         >
           {showForm ? "취소" : "+ 추가"}
         </button>
       </div>
 
       {showForm && (
-        <div style={{ background: "#f9fafb", borderRadius: "8px", padding: "10px", marginBottom: "8px", display: "grid", gap: "6px" }}>
+        <div style={{ background: "var(--color-bg-subtle)", borderRadius: "8px", padding: "10px", marginBottom: "8px", display: "grid", gap: "6px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
             <div>
-              <label style={{ fontSize: "11px", color: "#6b7280" }}>기간 (예: 2025, 2025-Q1)</label>
+              <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>기간 (예: 2025, 2025-Q1)</label>
               <input
                 value={form.period}
                 onChange={(e) => setForm((f) => ({ ...f, period: e.target.value }))}
@@ -189,7 +189,7 @@ function EstimatesSection({ ticker }: { ticker: string }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: "11px", color: "#6b7280" }}>EPS (원)</label>
+              <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>EPS (원)</label>
               <input
                 value={form.eps}
                 onChange={(e) => setForm((f) => ({ ...f, eps: e.target.value }))}
@@ -200,7 +200,7 @@ function EstimatesSection({ ticker }: { ticker: string }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
             <div>
-              <label style={{ fontSize: "11px", color: "#6b7280" }}>매출 (억)</label>
+              <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>매출 (억)</label>
               <input
                 value={form.revenue}
                 onChange={(e) => setForm((f) => ({ ...f, revenue: e.target.value }))}
@@ -209,7 +209,7 @@ function EstimatesSection({ ticker }: { ticker: string }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: "11px", color: "#6b7280" }}>영업이익 (억)</label>
+              <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>영업이익 (억)</label>
               <input
                 value={form.operating_income}
                 onChange={(e) => setForm((f) => ({ ...f, operating_income: e.target.value }))}
@@ -218,7 +218,7 @@ function EstimatesSection({ ticker }: { ticker: string }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: "11px", color: "#6b7280" }}>순이익 (억)</label>
+              <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>순이익 (억)</label>
               <input
                 value={form.net_income}
                 onChange={(e) => setForm((f) => ({ ...f, net_income: e.target.value }))}
@@ -239,14 +239,14 @@ function EstimatesSection({ ticker }: { ticker: string }) {
       )}
 
       {isLoading ? (
-        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>불러오는 중...</p>
+        <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>불러오는 중...</p>
       ) : rows.length === 0 ? (
-        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>추정치 없음</p>
+        <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>추정치 없음</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
             <thead>
-              <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+              <tr style={{ background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border)" }}>
                 <th style={thStyle}>기간</th>
                 <th style={thStyle}>매출</th>
                 <th style={thStyle}>영업이익</th>
@@ -257,17 +257,17 @@ function EstimatesSection({ ticker }: { ticker: string }) {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <tr key={r.id} style={{ borderBottom: "1px solid var(--color-bg-row)" }}>
                   <td style={tdStyle}>{r.period}</td>
                   <td style={tdStyle}>{formatKRW(r.revenue)}</td>
-                  <td style={{ ...tdStyle, color: r.operating_income !== null ? (r.operating_income >= 0 ? "#dc2626" : "#2563eb") : "#6b7280" }}>{formatKRW(r.operating_income)}</td>
-                  <td style={{ ...tdStyle, color: r.net_income !== null ? (r.net_income >= 0 ? "#dc2626" : "#2563eb") : "#6b7280" }}>{formatKRW(r.net_income)}</td>
+                  <td style={{ ...tdStyle, color: r.operating_income !== null ? (r.operating_income >= 0 ? "#dc2626" : "#2563eb") : "var(--color-text-muted)" }}>{formatKRW(r.operating_income)}</td>
+                  <td style={{ ...tdStyle, color: r.net_income !== null ? (r.net_income >= 0 ? "#dc2626" : "#2563eb") : "var(--color-text-muted)" }}>{formatKRW(r.net_income)}</td>
                   <td style={tdStyle}>{formatEPS(r.eps)}</td>
                   <td style={{ padding: "6px 4px" }}>
                     <button
                       type="button"
                       onClick={() => void handleDelete(r.id)}
-                      style={{ fontSize: "10px", color: "#9ca3af", border: "none", background: "none", cursor: "pointer", padding: 0 }}
+                      style={{ fontSize: "10px", color: "var(--color-text-faint)", border: "none", background: "none", cursor: "pointer", padding: 0 }}
                     >
                       삭제
                     </button>
@@ -286,9 +286,11 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "4px 6px",
   fontSize: "12px",
-  border: "1px solid #d1d5db",
+  border: "1px solid var(--color-border-light)",
   borderRadius: "4px",
   boxSizing: "border-box",
+  background: "var(--color-bg-card)",
+  color: "var(--color-text-primary)",
 };
 
 type TimelineEntry = { date: string; content: string };
@@ -367,17 +369,17 @@ function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forc
         <button
           type="button"
           onClick={() => { const next = !showForm; setShowForm(next); if (!next) { setForm(emptyForm()); setTlInput({ date: "", content: "" }); onFormClose?.(); } }}
-          style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px", border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", color: "#374151" }}
+          style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "6px", border: "1px solid var(--color-border-light)", background: "var(--color-bg-card)", cursor: "pointer", color: "var(--color-text-secondary)" }}
         >
           {showForm ? "취소" : "+ 추가"}
         </button>
       </div>
 
       {showForm && (
-        <div style={{ background: "#f9fafb", borderRadius: "8px", padding: "10px", marginBottom: "8px", display: "grid", gap: "8px" }}>
+        <div style={{ background: "var(--color-bg-subtle)", borderRadius: "8px", padding: "10px", marginBottom: "8px", display: "grid", gap: "8px" }}>
           {/* 날짜 */}
           <div>
-            <label style={{ fontSize: "11px", color: "#6b7280" }}>날짜</label>
+            <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>날짜</label>
             <input
               type="date"
               value={form.visit_date}
@@ -388,7 +390,7 @@ function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forc
 
           {/* 주요내용 */}
           <div>
-            <label style={{ fontSize: "11px", color: "#6b7280" }}>주요내용</label>
+            <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>주요내용</label>
             <input
               value={form.summary}
               onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
@@ -399,17 +401,17 @@ function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forc
 
           {/* 주요 타임라인 */}
           <div>
-            <label style={{ fontSize: "11px", color: "#6b7280" }}>주요 타임라인</label>
+            <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>주요 타임라인</label>
             {form.timeline.length > 0 && (
               <div style={{ display: "grid", gap: "4px", marginBottom: "6px", marginTop: "4px" }}>
                 {form.timeline.map((entry, idx) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "4px 8px" }}>
-                    <span style={{ fontSize: "11px", color: "#6b7280", whiteSpace: "nowrap" }}>{entry.date}</span>
-                    <span style={{ fontSize: "12px", color: "#374151", flex: 1 }}>{entry.content}</span>
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px", background: "var(--color-bg-card)", border: "1px solid var(--color-border)", borderRadius: "6px", padding: "4px 8px" }}>
+                    <span style={{ fontSize: "11px", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>{entry.date}</span>
+                    <span style={{ fontSize: "12px", color: "var(--color-text-secondary)", flex: 1 }}>{entry.content}</span>
                     <button
                       type="button"
                       onClick={() => removeTimelineEntry(idx)}
-                      style={{ fontSize: "11px", color: "#9ca3af", border: "none", background: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                      style={{ fontSize: "11px", color: "var(--color-text-faint)", border: "none", background: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}
                     >
                       ✕
                     </button>
@@ -443,7 +445,7 @@ function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forc
 
           {/* 상세내용 */}
           <div>
-            <label style={{ fontSize: "11px", color: "#6b7280" }}>상세내용</label>
+            <label style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>상세내용</label>
             <textarea
               value={form.details}
               onChange={(e) => setForm((f) => ({ ...f, details: e.target.value }))}
@@ -465,36 +467,36 @@ function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forc
       )}
 
       {isLoading ? (
-        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>불러오는 중...</p>
+        <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>불러오는 중...</p>
       ) : rows.length === 0 ? (
-        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>팔로업 내용 없음</p>
+        <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>팔로업 내용 없음</p>
       ) : (
         <div style={{ display: "grid", gap: "6px" }}>
           {rows.map((r) => (
-            <div key={r.id} style={{ border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
+            <div key={r.id} style={{ border: "1px solid var(--color-border)", borderRadius: "8px", overflow: "hidden" }}>
               <div
                 onClick={() => setExpanded((prev) => (prev === r.id ? null : r.id))}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", cursor: "pointer", background: expanded === r.id ? "#eff6ff" : "#fff" }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", cursor: "pointer", background: expanded === r.id ? "var(--color-memo-expanded)" : "var(--color-bg-card)" }}
               >
                 <div style={{ display: "flex", gap: "10px", alignItems: "baseline", minWidth: 0 }}>
-                  <span style={{ fontSize: "11px", color: "#6b7280", whiteSpace: "nowrap" }}>{r.visit_date}</span>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: "11px", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>{r.visit_date}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {r.summary || "(주요내용 없음)"}
                   </span>
                 </div>
-                <span style={{ fontSize: "11px", color: "#9ca3af", marginLeft: "8px" }}>{expanded === r.id ? "▲" : "▼"}</span>
+                <span style={{ fontSize: "11px", color: "var(--color-text-faint)", marginLeft: "8px" }}>{expanded === r.id ? "▲" : "▼"}</span>
               </div>
               {expanded === r.id && (
-                <div style={{ padding: "10px", borderTop: "1px solid #e5e7eb", background: "#fafafa", display: "grid", gap: "8px" }}>
+                <div style={{ padding: "10px", borderTop: "1px solid var(--color-border)", background: "var(--color-memo-detail-bg)", display: "grid", gap: "8px" }}>
                   {/* 타임라인 */}
                   {r.timeline?.length > 0 && (
                     <div>
-                      <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 600, color: "#6b7280" }}>주요 타임라인</p>
+                      <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>주요 타임라인</p>
                       <div style={{ display: "grid", gap: "3px", borderLeft: "2px solid #2563eb", paddingLeft: "8px" }}>
                         {r.timeline.map((entry, idx) => (
                           <div key={idx} style={{ display: "flex", gap: "8px", fontSize: "12px" }}>
-                            <span style={{ color: "#6b7280", whiteSpace: "nowrap" }}>{entry.date}</span>
-                            <span style={{ color: "#374151" }}>{entry.content}</span>
+                            <span style={{ color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>{entry.date}</span>
+                            <span style={{ color: "var(--color-text-secondary)" }}>{entry.content}</span>
                           </div>
                         ))}
                       </div>
@@ -503,8 +505,8 @@ function MemosSection({ ticker, forceOpen, onFormClose }: { ticker: string; forc
                   {/* 상세내용 */}
                   {r.details && (
                     <div>
-                      <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 600, color: "#6b7280" }}>상세내용</p>
-                      <p style={{ margin: 0, fontSize: "12px", color: "#374151", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{r.details}</p>
+                      <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>상세내용</p>
+                      <p style={{ margin: 0, fontSize: "12px", color: "var(--color-text-secondary)", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{r.details}</p>
                     </div>
                   )}
                   <button
@@ -586,7 +588,7 @@ function ChecklistSection({ ticker }: { ticker: string }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
         <p style={{ margin: 0, fontWeight: 700, fontSize: "13px" }}>체크리스트</p>
         {items.length > 0 && (
-          <span style={{ fontSize: "11px", color: "#6b7280" }}>{done}/{items.length}</span>
+          <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{done}/{items.length}</span>
         )}
       </div>
 
@@ -610,9 +612,9 @@ function ChecklistSection({ ticker }: { ticker: string }) {
       </div>
 
       {isLoading ? (
-        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>불러오는 중...</p>
+        <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>불러오는 중...</p>
       ) : items.length === 0 ? (
-        <p style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}>항목 없음</p>
+        <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>항목 없음</p>
       ) : (
         <div style={{ display: "grid", gap: "4px" }}>
           {items.map((item) => (
@@ -626,7 +628,7 @@ function ChecklistSection({ ticker }: { ticker: string }) {
               <span style={{
                 flex: 1,
                 fontSize: "12px",
-                color: item.checked ? "#9ca3af" : "#111827",
+                color: item.checked ? "var(--color-text-faint)" : "var(--color-text-primary)",
                 textDecoration: item.checked ? "line-through" : "none",
               }}>
                 {item.content}
@@ -634,7 +636,7 @@ function ChecklistSection({ ticker }: { ticker: string }) {
               <button
                 type="button"
                 onClick={() => void handleDelete(item.id)}
-                style={{ fontSize: "11px", color: "#d1d5db", border: "none", background: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}
+                style={{ fontSize: "11px", color: "var(--color-border-light)", border: "none", background: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}
               >
                 ✕
               </button>
@@ -692,18 +694,18 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
   }, [period]);
 
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", display: "grid", gap: "14px", maxHeight: "80vh", overflowY: "auto" }}>
+    <div style={{ border: "1px solid var(--color-border)", borderRadius: "12px", padding: "16px", display: "grid", gap: "14px", maxHeight: "80vh", overflowY: "auto", background: "var(--color-bg-card)" }}>
       {/* 헤더 */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           {isLoading ? (
-            <p style={{ margin: 0, color: "#6b7280" }}>불러오는 중...</p>
+            <p style={{ margin: 0, color: "var(--color-text-muted)" }}>불러오는 중...</p>
           ) : detail ? (
             <>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>{detail.companyName}</h2>
                 {detail.marketCap !== null && (
-                  <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>
+                  <span style={{ fontSize: "13px", color: "var(--color-text-muted)", fontWeight: 500 }}>
                     시총 {formatKRW(detail.marketCap)}
                   </span>
                 )}
@@ -735,7 +737,7 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
                     padding: "3px 10px",
                     borderRadius: "6px",
                     border: inUniverse ? "1px solid #16a34a" : "1px solid #2563eb",
-                    background: inUniverse ? "#f0fdf4" : "#eff6ff",
+                    background: inUniverse ? "var(--color-green-bg)" : "var(--color-blue-bg)",
                     color: inUniverse ? "#16a34a" : "#2563eb",
                     cursor: universeLoading ? "not-allowed" : "pointer",
                     fontWeight: 600,
@@ -746,7 +748,7 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
                   {inUniverse ? "팔로업 중 ✓" : "팔로업하기"}
                 </button>
               </div>
-              <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#6b7280" }}>{detail.ticker} · {detail.market}</p>
+              <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--color-text-muted)" }}>{detail.ticker} · {detail.market}</p>
               {detail.currentPrice !== null && (
                 <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: 700 }}>
                   {detail.currentPrice.toLocaleString("ko-KR")}원
@@ -760,7 +762,7 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
             </>
           ) : null}
         </div>
-        <button type="button" onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "18px", color: "#6b7280", lineHeight: 1 }}>✕</button>
+        <button type="button" onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", fontSize: "18px", color: "var(--color-text-muted)", lineHeight: 1 }}>✕</button>
       </div>
 
       {detail && (
@@ -780,9 +782,9 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
                       borderRadius: "6px",
                       fontSize: "11px",
                       fontWeight: period === p ? 700 : 400,
-                      border: period === p ? "2px solid #2563eb" : "1px solid #d1d5db",
-                      background: period === p ? "#eff6ff" : "#fff",
-                      color: period === p ? "#2563eb" : "#6b7280",
+                      border: period === p ? "2px solid #2563eb" : "1px solid var(--color-border-light)",
+                      background: period === p ? "var(--color-blue-bg)" : "var(--color-bg-card)",
+                      color: period === p ? "#2563eb" : "var(--color-text-muted)",
                       cursor: "pointer",
                     }}
                   >
@@ -792,7 +794,7 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
               </div>
             </div>
             {isChartLoading ? (
-              <p style={{ color: "#9ca3af", fontSize: "13px", margin: 0 }}>차트 불러오는 중...</p>
+              <p style={{ color: "var(--color-text-faint)", fontSize: "13px", margin: 0 }}>차트 불러오는 중...</p>
             ) : (
               <PriceChart data={detail.priceHistory} period={period} />
             )}
@@ -811,9 +813,9 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
                     borderRadius: "6px",
                     fontSize: "12px",
                     fontWeight: tab === t ? 700 : 400,
-                    border: tab === t ? "2px solid #2563eb" : "1px solid #d1d5db",
-                    background: tab === t ? "#eff6ff" : "#fff",
-                    color: tab === t ? "#2563eb" : "#374151",
+                    border: tab === t ? "2px solid #2563eb" : "1px solid var(--color-border-light)",
+                    background: tab === t ? "var(--color-blue-bg)" : "var(--color-bg-card)",
+                    color: tab === t ? "#2563eb" : "var(--color-text-secondary)",
                     cursor: "pointer",
                   }}
                 >

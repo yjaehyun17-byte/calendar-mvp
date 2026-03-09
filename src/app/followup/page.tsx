@@ -102,19 +102,19 @@ export default function FollowupPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", alignItems: "start" }}>
         <section>
-          <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#374151", marginBottom: "12px" }}>
+          <h2 style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-secondary)", marginBottom: "12px" }}>
             수익률 트래킹
           </h2>
 
           {isLoading ? (
-            <p style={{ color: "#6b7280" }}>데이터를 불러오는 중...</p>
+            <p style={{ color: "var(--color-text-muted)" }}>데이터를 불러오는 중...</p>
           ) : items.length === 0 ? (
-            <p style={{ color: "#6b7280" }}>팔로업할 일정이 없습니다.</p>
+            <p style={{ color: "var(--color-text-muted)" }}>팔로업할 일정이 없습니다.</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
                 <thead>
-                  <tr style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
+                  <tr style={{ background: "var(--color-bg-subtle)", borderBottom: "2px solid var(--color-border)" }}>
                     {COLUMNS.map(({ label, key }) => {
                       const isActive = sortKey === key;
                       const arrow = isActive ? (sortDir === "asc" ? " ▲" : " ▼") : " ↕";
@@ -126,7 +126,7 @@ export default function FollowupPage() {
                             padding: "10px 14px",
                             textAlign: "left",
                             fontWeight: 600,
-                            color: isActive ? "#2563eb" : "#374151",
+                            color: isActive ? "#2563eb" : "var(--color-text-secondary)",
                             whiteSpace: "nowrap",
                             cursor: "pointer",
                             userSelect: "none",
@@ -142,21 +142,21 @@ export default function FollowupPage() {
                 <tbody>
                   {sorted.map((item) => {
                     const ret = item.returnPct;
-                    const retColor = ret === null ? "#6b7280" : ret >= 0 ? "#dc2626" : "#2563eb";
+                    const retColor = ret === null ? "var(--color-text-muted)" : ret >= 0 ? "#dc2626" : "#2563eb";
                     return (
-                      <tr key={item.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                      <tr key={item.id} style={{ borderBottom: "1px solid var(--color-border)" }}>
                         <td
                           onClick={() => setSelectedTicker(item.ticker === selectedTicker ? null : item.ticker)}
                           style={{ padding: "10px 14px", fontWeight: 600, cursor: "pointer", color: selectedTicker === item.ticker ? "#2563eb" : "inherit", textDecoration: selectedTicker === item.ticker ? "underline" : "none" }}
                         >
                           {item.companyName}
                         </td>
-                        <td style={{ padding: "10px 14px", color: "#374151" }}>{formatDate(item.eventDate)}</td>
-                        <td style={{ padding: "10px 14px", color: "#374151" }}>
+                        <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{formatDate(item.eventDate)}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>
                           {item.daysAgo >= 0 ? `D+${item.daysAgo}` : `D${item.daysAgo}`}
                         </td>
-                        <td style={{ padding: "10px 14px", color: "#374151" }}>{formatPrice(item.priceAtEvent)}</td>
-                        <td style={{ padding: "10px 14px", color: "#374151" }}>{formatPrice(item.currentPrice)}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{formatPrice(item.priceAtEvent)}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{formatPrice(item.currentPrice)}</td>
                         <td style={{ padding: "10px 14px", fontWeight: 700, color: retColor }}>{formatReturn(ret)}</td>
                       </tr>
                     );
@@ -171,7 +171,7 @@ export default function FollowupPage() {
           {selectedTicker ? (
             <CompanyPanel ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />
           ) : (
-            <div style={{ border: "1px dashed #d1d5db", borderRadius: "12px", padding: "40px 16px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
+            <div style={{ border: "1px dashed var(--color-border-light)", borderRadius: "12px", padding: "40px 16px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "14px" }}>
               기업명을 클릭하면 상세 정보가 표시됩니다.
             </div>
           )}

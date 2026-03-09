@@ -54,7 +54,7 @@ function formatDateKo(dateStr: string) {
 }
 
 const sectionStyle: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--color-border)",
   borderRadius: "12px",
   padding: "16px",
 };
@@ -67,7 +67,7 @@ const sectionTitleStyle: React.CSSProperties = {
 
 const sectionSubStyle: React.CSSProperties = {
   fontSize: "12px",
-  color: "#9ca3af",
+  color: "var(--color-text-faint)",
   margin: "0 0 14px",
 };
 
@@ -211,15 +211,15 @@ export default function UniversePage() {
       <h1 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "8px" }}>유니버스</h1>
 
       {tickers.length > 0 && (
-        <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "20px" }}>
+        <p style={{ fontSize: "13px", color: "var(--color-text-muted)", marginBottom: "20px" }}>
           팔로업 기업 {tickers.length}개 · 타임라인 일정 {calEvents.length}건
         </p>
       )}
 
       {isLoading ? (
-        <p style={{ color: "#6b7280" }}>데이터를 불러오는 중...</p>
+        <p style={{ color: "var(--color-text-muted)" }}>데이터를 불러오는 중...</p>
       ) : tickers.length === 0 ? (
-        <div style={{ border: "1px dashed #d1d5db", borderRadius: "12px", padding: "60px 16px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
+        <div style={{ border: "1px dashed var(--color-border-light)", borderRadius: "12px", padding: "60px 16px", textAlign: "center", color: "var(--color-text-faint)", fontSize: "14px" }}>
           팔로업하기 버튼을 눌러 기업을 추가하면 타임라인이 표시됩니다.
         </div>
       ) : (
@@ -246,12 +246,12 @@ export default function UniversePage() {
               <p style={sectionSubStyle}>{formatDateKo(monthStart)} – {formatDateKo(monthEnd)}</p>
 
               {monthGrouped.length === 0 ? (
-                <p style={{ fontSize: "13px", color: "#9ca3af" }}>일정 없음</p>
+                <p style={{ fontSize: "13px", color: "var(--color-text-faint)" }}>일정 없음</p>
               ) : (
                 <div style={{ display: "grid", gap: "12px" }}>
                   {monthGrouped.map(([date, evs]) => (
                     <div key={date}>
-                      <p style={{ fontSize: "12px", fontWeight: 700, color: "#2563eb", margin: "0 0 6px", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px" }}>
+                      <p style={{ fontSize: "12px", fontWeight: 700, color: "#2563eb", margin: "0 0 6px", borderBottom: "1px solid var(--color-border)", paddingBottom: "4px" }}>
                         {formatDateKo(date)}
                       </p>
                       <div style={{ display: "grid", gap: "6px" }}>
@@ -267,10 +267,10 @@ export default function UniversePage() {
                                 style={{ marginTop: "2px", accentColor: "#2563eb", flexShrink: 0 }}
                               />
                               <div style={{ opacity: isChecked ? 0.4 : 1 }}>
-                                <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "#111827", textDecoration: isChecked ? "line-through" : "none" }}>
+                                <p style={{ margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", textDecoration: isChecked ? "line-through" : "none" }}>
                                   {ev.companyName}
                                 </p>
-                                <p style={{ margin: 0, fontSize: "11px", color: "#6b7280", textDecoration: isChecked ? "line-through" : "none" }}>
+                                <p style={{ margin: 0, fontSize: "11px", color: "var(--color-text-muted)", textDecoration: isChecked ? "line-through" : "none" }}>
                                   {ev.title.replace(`[${ev.companyName}] `, "")}
                                 </p>
                               </div>
@@ -290,12 +290,12 @@ export default function UniversePage() {
               <p style={sectionSubStyle}>기업별 체크리스트</p>
 
               {checklistGrouped.length === 0 ? (
-                <p style={{ fontSize: "13px", color: "#9ca3af" }}>체크리스트 없음</p>
+                <p style={{ fontSize: "13px", color: "var(--color-text-faint)" }}>체크리스트 없음</p>
               ) : (
                 <div style={{ display: "grid", gap: "14px" }}>
                   {checklistGrouped.map(({ companyName, items }) => (
                     <div key={companyName}>
-                      <p style={{ fontSize: "12px", fontWeight: 700, color: "#7c3aed", margin: "0 0 6px", borderBottom: "1px solid #e5e7eb", paddingBottom: "4px" }}>
+                      <p style={{ fontSize: "12px", fontWeight: 700, color: "#7c3aed", margin: "0 0 6px", borderBottom: "1px solid var(--color-border)", paddingBottom: "4px" }}>
                         {companyName}
                       </p>
                       <div style={{ display: "grid", gap: "5px" }}>
@@ -313,7 +313,7 @@ export default function UniversePage() {
                             />
                             <span style={{
                               fontSize: "12px",
-                              color: item.checked ? "#9ca3af" : "#374151",
+                              color: item.checked ? "var(--color-text-faint)" : "var(--color-text-secondary)",
                               textDecoration: item.checked ? "line-through" : "none",
                             }}>
                               {item.content}
