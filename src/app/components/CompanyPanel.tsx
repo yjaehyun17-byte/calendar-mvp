@@ -294,6 +294,97 @@ const inputStyle: React.CSSProperties = {
   color: "var(--color-text-primary)",
 };
 
+type KeyFactor = { id: string; ticker: string; content: string; created_at: string };
+
+function KeyFactorsSection({ ticker }: { ticker: string }) {
+  const [items, setItems] = useState<KeyFactor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [input, setInput] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/keyfactors?ticker=${encodeURIComponent(ticker)}`, { cache: "no-store" });
+      const data = (await res.json()) as KeyFactor[];
+      setItems(Array.isArray(data) ? data : []);
+    } catch {
+      setItems([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [ticker]);
+
+  const handleAdd = async () => {
+    if (!input.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/keyfactors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, content: input.trim() }),
+      });
+      const item = (await res.json()) as KeyFactor;
+      setItems((prev) => [...prev, item]);
+      setInput("");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/keyfactors?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  return (
+    <div>
+      <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "13px" }}>키팩터</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "4px", marginBottom: "8px" }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleAdd(); } }}
+          placeholder="핵심 모니터링 포인트 입력"
+          style={inputStyle}
+        />
+        <button
+          type="button"
+          onClick={() => void handleAdd()}
+          disabled={saving || !input.trim()}
+          style={{ padding: "4px 10px", borderRadius: "6px", border: "1px solid #2563eb", background: "var(--color-blue-bg)", color: "#2563eb", fontSize: "12px", cursor: "pointer", fontWeight: 600, opacity: saving ? 0.6 : 1 }}
+        >
+          추가
+        </button>
+      </div>
+
+      {isLoading ? (
+        <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>불러오는 중...</p>
+      ) : items.length === 0 ? (
+        <p style={{ fontSize: "12px", color: "var(--color-text-faint)", margin: 0 }}>키팩터 없음</p>
+      ) : (
+        <ol style={{ margin: 0, padding: "0 0 0 18px", display: "grid", gap: "6px" }}>
+          {items.map((item) => (
+            <li key={item.id} style={{ fontSize: "12px", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
+              <span style={{ flex: 1 }}>{item.content}</span>
+              <button
+                type="button"
+                onClick={() => void handleDelete(item.id)}
+                style={{ marginLeft: "8px", fontSize: "11px", color: "var(--color-text-faint)", border: "none", background: "none", cursor: "pointer", padding: 0, lineHeight: 1, verticalAlign: "middle" }}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 type TimelineEntry = { date: string; content: string };
 type MemoRow = { id: string; ticker: string; visit_date: string; summary: string; timeline: TimelineEntry[]; details: string };
 
@@ -845,6 +936,9 @@ export default function CompanyPanel({ ticker, onClose }: { ticker: string; onCl
 
           {/* 추정치 */}
           <EstimatesSection ticker={ticker} />
+
+          {/* 키팩터 */}
+          <KeyFactorsSection ticker={ticker} />
 
           {/* 기업 팔로업 */}
           <div ref={memosSectionRef}>
