@@ -13,9 +13,11 @@ type ListedCompany = {
 function normalizeTicker(value: unknown): string | null {
   if (typeof value !== "string" && typeof value !== "number") return null;
   const cleaned = String(value).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (!cleaned) return null;
-  const padded = cleaned.padStart(6, "0").slice(-6);
-  return padded;
+  if (!cleaned || cleaned.length > 20) return null;
+  // 숫자만 있는 경우 6자리 zero-pad (기존 한국 종목코드)
+  if (/^[0-9]+$/.test(cleaned)) return cleaned.padStart(6, "0").slice(-6);
+  // 영문 포함(영문 티커, 혼합 코드)은 그대로
+  return cleaned;
 }
 
 function normalizeDate(value: unknown): string | null {
