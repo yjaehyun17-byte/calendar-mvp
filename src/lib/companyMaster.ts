@@ -26,9 +26,9 @@ function normalizeMarket(market?: string): CompanyMasterItem["market"] | null {
 
 function normalizeTicker(value?: string): string | null {
   if (!value) return null;
-  const digitsOnly = value.replace(/\D/g, "");
-  if (digitsOnly.length !== 6) return null;
-  return digitsOnly;
+  const cleaned = value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (cleaned.length !== 6) return null;
+  return cleaned;
 }
 
 function normalizeItem(item: RawMasterItem): CompanyMasterItem | null {

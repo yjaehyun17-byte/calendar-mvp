@@ -92,7 +92,7 @@ export async function GET() {
 
       const eventType = typeMatch[1];
       const titleWithoutType = event.title.replace(/^\[(탐방|컨콜)\]\s*/, "");
-      const companyMatch = titleWithoutType.match(/^(.+?)\s*\((\d+)\.KRX\)$/);
+      const companyMatch = titleWithoutType.match(/^(.+?)\s*\(([A-Z0-9]+)\.KRX\)$/);
       if (!companyMatch) return null;
 
       return {

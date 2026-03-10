@@ -268,7 +268,7 @@ export default function CalendarPage() {
   const calendarEvents = useMemo<EventInput[]>(() => {
     return events.map((event) => ({
       id: event.id,
-      title: event.title.replace(/^\[(탐방|컨콜)\]\s*/, "").replace(/\s*\(\d+\.KRX\)$/, ""),
+      title: event.title.replace(/^\[(탐방|컨콜)\]\s*/, "").replace(/\s*\([A-Z0-9]+\.KRX\)$/, ""),
       start: event.start,
       end: event.end ?? undefined,
       backgroundColor: event.color,
@@ -492,7 +492,7 @@ export default function CalendarPage() {
     const typeMatch = target.title.match(/^\[(탐방|컨콜)\]\s*/);
     const eventType = (typeMatch?.[1] as "탐방" | "컨콜") ?? "탐방";
     const titleWithoutType = target.title.replace(/^\[(탐방|컨콜)\]\s*/, "");
-    const companyMatch = titleWithoutType.match(/^(.+)\s*\((\d+)\.KRX\)$/) ?? null;
+    const companyMatch = titleWithoutType.match(/^(.+)\s*\(([A-Z0-9]+)\.KRX\)$/) ?? null;
     const companyName = companyMatch?.[1] ?? "";
     const companyTicker = companyMatch?.[2] ?? "";
 

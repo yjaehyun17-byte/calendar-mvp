@@ -10,8 +10,17 @@ type YahooChartResult = {
 type NaverTitleItem = { isConsensus: string; title: string; key: string };
 type NaverColumnItem = { value: string; cx: string | null };
 type NaverRowItem = { title: string; columns: Record<string, NaverColumnItem> };
-type NaverFinanceInfo = { trTitleList: NaverTitleItem[]; rowList: NaverRowItem[] };
-type NaverFinanceResponse = { financeInfo: NaverFinanceInfo };
+type NaverFinanceInfo = { trTitleList: NaverTitleItem[]; rowList: NaverRowItem[]; unit?: string };
+type NaverFinanceResponse = { financeInfo: NaverFinanceInfo; unit?: string };
+
+function unitMultiplier(unit: string | undefined): number {
+  if (!unit) return 100_000_000; // 단위 불명 시 억원 기본값
+  if (unit.includes("조")) return 1_000_000_000_000;
+  if (unit.includes("억")) return 100_000_000;
+  if (unit.includes("백만")) return 1_000_000;
+  if (unit.includes("천")) return 1_000;
+  return 1;
+}
 
 async function safeFetch(url: string, extraHeaders?: Record<string, string>) {
   try {
@@ -42,6 +51,10 @@ function parseNaverFinanceData(data: unknown, onlyConfirmed: boolean) {
   const fi = resp.financeInfo;
   if (!fi?.trTitleList || !fi?.rowList) return [];
 
+  // 응답 최상위 또는 financeInfo 안의 unit 필드 우선 참조
+  const unit = fi.unit ?? resp.unit;
+  const multiplier = unitMultiplier(unit);
+
   const periods = fi.trTitleList.filter((t) =>
     onlyConfirmed ? t.isConsensus === "N" : true
   );
@@ -53,11 +66,10 @@ function parseNaverFinanceData(data: unknown, onlyConfirmed: boolean) {
   const epsRow = findRow("EPS");
 
   return periods.map((p) => ({
-    // Use title as display period (e.g. "2023.12." or "2024.03.")
     period: p.title.replace(/\.$/, ""),
-    revenue: parseNaverValue(revenueRow, p.key, 100_000_000),
-    operatingIncome: parseNaverValue(opIncomeRow, p.key, 100_000_000),
-    netIncome: parseNaverValue(netIncomeRow, p.key, 100_000_000),
+    revenue: parseNaverValue(revenueRow, p.key, multiplier),
+    operatingIncome: parseNaverValue(opIncomeRow, p.key, multiplier),
+    netIncome: parseNaverValue(netIncomeRow, p.key, multiplier),
     eps: parseNaverValue(epsRow, p.key, 1),
   }));
 }
@@ -112,18 +124,19 @@ export async function GET(request: Request) {
   const currentPrice = priceHistory.at(-1)?.close ?? null;
   const prevPrice = priceHistory.at(-2)?.close ?? null;
   const changePct = currentPrice && prevPrice ? ((currentPrice - prevPrice) / prevPrice) * 100 : null;
-  // 시가총액: 네이버 연간 재무 rowList의 시가총액 행에서 직접 추출 (단위: 억원)
-  const annualFi = (annualData as NaverFinanceResponse | null)?.financeInfo;
+  const annualResp = annualData as NaverFinanceResponse | null;
+  const annualFi = annualResp?.financeInfo;
   let marketCap: number | null = null;
 
   if (annualFi) {
+    const annualUnit = annualFi.unit ?? annualResp?.unit;
+    const annualMultiplier = unitMultiplier(annualUnit);
     const confirmedPeriods = annualFi.trTitleList.filter((t) => t.isConsensus === "N");
     const latestPeriod = confirmedPeriods.at(-1);
     if (latestPeriod) {
       const mcapRow = annualFi.rowList.find((r) => r.title === "시가총액");
       if (mcapRow) {
-        // 단위: 억원 → 원
-        marketCap = parseNaverValue(mcapRow, latestPeriod.key, 100_000_000);
+        marketCap = parseNaverValue(mcapRow, latestPeriod.key, annualMultiplier);
       }
       // fallback: 발행주식수 × 현재가
       if (!marketCap && currentPrice) {

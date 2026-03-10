@@ -31,7 +31,7 @@ export async function GET() {
       const typeMatch = ev.title.match(/^\[(탐방|컨콜)\]/);
       if (!typeMatch) return null;
       const titleWithoutType = ev.title.replace(/^\[(탐방|컨콜)\]\s*/, "");
-      const companyMatch = titleWithoutType.match(/^(.+?)\s*\((\d+)\.KRX\)$/);
+      const companyMatch = titleWithoutType.match(/^(.+?)\s*\(([A-Z0-9]+)\.KRX\)$/);
       if (!companyMatch) return null;
       const ticker = companyMatch[2];
       if (!tickers.includes(ticker)) return null;

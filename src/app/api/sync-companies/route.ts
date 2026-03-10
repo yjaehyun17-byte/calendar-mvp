@@ -12,9 +12,10 @@ type ListedCompany = {
 
 function normalizeTicker(value: unknown): string | null {
   if (typeof value !== "string" && typeof value !== "number") return null;
-  const digits = String(value).replace(/\D/g, "");
-  if (!digits) return null;
-  return digits.padStart(6, "0").slice(-6);
+  const cleaned = String(value).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!cleaned) return null;
+  const padded = cleaned.padStart(6, "0").slice(-6);
+  return padded;
 }
 
 function normalizeDate(value: unknown): string | null {
