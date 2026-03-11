@@ -79,12 +79,53 @@ function sortByDate(items: NewsItem[]): NewsItem[] {
   });
 }
 
+async function translateText(text: string): Promise<string> {
+  if (!text) return text;
+  try {
+    const url =
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ko&dt=t&q=` +
+      encodeURIComponent(text);
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    if (!res.ok) return text;
+    const data = (await res.json()) as unknown[][];
+    const translated = (data[0] as unknown[][])
+      ?.map((part) => String(part[0] ?? ""))
+      .join("");
+    return translated || text;
+  } catch {
+    return text;
+  }
+}
+
+async function translateItems(items: NewsItem[]): Promise<NewsItem[]> {
+  // 동시에 너무 많은 요청을 보내지 않도록 5개씩 병렬 처리
+  const CHUNK = 5;
+  const result: NewsItem[] = [];
+  for (let i = 0; i < items.length; i += CHUNK) {
+    const chunk = items.slice(i, i + CHUNK);
+    const translated = await Promise.all(
+      chunk.map(async (item) => ({
+        ...item,
+        title: await translateText(item.title),
+        description: item.description ? await translateText(item.description) : "",
+      }))
+    );
+    result.push(...translated);
+  }
+  return result;
+}
+
 export async function GET(req: NextRequest) {
   const type = req.nextUrl.searchParams.get("type") ?? "domestic";
   const feeds = type === "global" ? GLOBAL_FEEDS : DOMESTIC_FEEDS;
 
   const results = await Promise.all(feeds.map((f) => fetchRSS(f.url, f.name)));
   const merged = sortByDate(results.flat());
+
+  if (type === "global") {
+    const translated = await translateItems(merged);
+    return NextResponse.json(translated);
+  }
 
   return NextResponse.json(merged);
 }
