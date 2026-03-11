@@ -10,8 +10,9 @@ export type NewsItem = {
 };
 
 const DOMESTIC_FEEDS = [
-  { url: "https://news.naver.com/main/rss/index.naver?sectionId=101", name: "네이버 경제" },
-  { url: "https://news.naver.com/main/rss/index.naver?sectionId=105", name: "네이버 IT/과학" },
+  { url: "https://www.yna.co.kr/rss/economy.xml", name: "연합뉴스" },
+  { url: "https://www.mk.co.kr/rss/30000001/", name: "매일경제" },
+  { url: "https://www.hankyung.com/feed/economy", name: "한국경제" },
 ];
 
 const GLOBAL_FEEDS = [
@@ -33,7 +34,11 @@ async function fetchRSS(url: string, sourceName: string): Promise<NewsItem[]> {
     if (!res.ok) return [];
 
     const xml = await res.text();
-    const parser = new XMLParser({ ignoreAttributes: false, parseTagValue: true });
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      parseTagValue: true,
+      cdataPropName: "__cdata",
+    });
     const result = parser.parse(xml) as Record<string, unknown>;
 
     const channel = (result?.rss as Record<string, unknown>)?.channel as Record<string, unknown>;
@@ -42,16 +47,23 @@ async function fetchRSS(url: string, sourceName: string): Promise<NewsItem[]> {
     const raw = channel.item;
     const items = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
+    function extractText(val: unknown): string {
+      if (val === null || val === undefined) return "";
+      if (typeof val === "string") return val;
+      if (typeof val === "number") return String(val);
+      if (typeof val === "object") {
+        const obj = val as Record<string, unknown>;
+        if (obj.__cdata) return String(obj.__cdata);
+        if (obj["#text"]) return String(obj["#text"]);
+      }
+      return String(val);
+    }
+
     return items.slice(0, 20).map((item: Record<string, unknown>) => ({
-      title: String(item.title ?? "")
-        .replace(/<[^>]+>/g, "")
-        .trim(),
-      link: String(item.link ?? item.guid ?? ""),
-      pubDate: String(item.pubDate ?? item["dc:date"] ?? ""),
-      description: String(item.description ?? "")
-        .replace(/<[^>]+>/g, "")
-        .trim()
-        .slice(0, 200),
+      title: extractText(item.title).replace(/<[^>]+>/g, "").trim(),
+      link: extractText(item.link || item.guid),
+      pubDate: extractText(item.pubDate ?? item["dc:date"]),
+      description: extractText(item.description).replace(/<[^>]+>/g, "").trim().slice(0, 200),
       source: sourceName,
     }));
   } catch {
