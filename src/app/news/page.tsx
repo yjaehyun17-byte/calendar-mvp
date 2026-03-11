@@ -16,20 +16,43 @@ function formatPubDate(raw: string): string {
   return `${d.getMonth() + 1}.${d.getDate()}`;
 }
 
-function NewsCard({ item }: { item: NewsItem }) {
+const STORAGE_KEY = "news_read_links";
+
+function getReadSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function markRead(link: string) {
+  try {
+    const set = getReadSet();
+    set.add(link);
+    // 너무 많이 쌓이지 않도록 최근 500개만 유지
+    const arr = Array.from(set).slice(-500);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
+function NewsCard({ item, isRead, onRead }: { item: NewsItem; isRead: boolean; onRead: (link: string) => void }) {
   return (
     <a
       href={item.link}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => onRead(item.link)}
       style={{
         display: "block",
         padding: "12px 14px",
-        background: "var(--color-bg-card)",
+        background: isRead ? "var(--color-bg-subtle)" : "var(--color-bg-card)",
         border: "1px solid var(--color-border)",
         borderRadius: "8px",
         textDecoration: "none",
         transition: "border-color 0.15s, box-shadow 0.15s",
+        opacity: isRead ? 0.55 : 1,
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLAnchorElement).style.borderColor = "#2563eb";
@@ -54,8 +77,8 @@ function NewsCard({ item }: { item: NewsItem }) {
         <span
           style={{
             fontSize: "13px",
-            fontWeight: 600,
-            color: "var(--color-text-primary)",
+            fontWeight: isRead ? 400 : 600,
+            color: isRead ? "var(--color-text-faint)" : "var(--color-text-primary)",
             lineHeight: "1.45",
           }}
         >
@@ -74,7 +97,7 @@ function NewsCard({ item }: { item: NewsItem }) {
             style={{
               fontSize: "10px",
               color: "white",
-              background: "#2563eb",
+              background: isRead ? "var(--color-text-faint)" : "#2563eb",
               padding: "1px 6px",
               borderRadius: "4px",
               fontWeight: 600,
@@ -118,6 +141,16 @@ function NewsFeed({ type }: { type: "domestic" | "global" }) {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [readLinks, setReadLinks] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setReadLinks(getReadSet());
+  }, []);
+
+  const handleRead = useCallback((link: string) => {
+    markRead(link);
+    setReadLinks((prev) => new Set(prev).add(link));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -219,7 +252,12 @@ function NewsFeed({ type }: { type: "domestic" | "global" }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
         {items.map((item, i) => (
-          <NewsCard key={`${item.link}-${i}`} item={item} />
+          <NewsCard
+            key={`${item.link}-${i}`}
+            item={item}
+            isRead={readLinks.has(item.link)}
+            onRead={handleRead}
+          />
         ))}
       </div>
     </div>
