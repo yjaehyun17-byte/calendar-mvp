@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { NewsItem } from "../api/news/route";
+import type { Disclosure } from "../api/disclosures/route";
 
 function formatPubDate(raw: string): string {
   if (!raw) return "";
@@ -226,20 +227,267 @@ function NewsFeed({ type }: { type: "domestic" | "global" }) {
 }
 
 function DisclosureSummary() {
+  const [items, setItems] = useState<Disclosure[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [label, setLabel] = useState("");
+  const [url, setUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const urlRef = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/disclosures", { cache: "no-store" });
+      const data = (await res.json()) as Disclosure[];
+      setItems(Array.isArray(data) ? data : []);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const handleAdd = async () => {
+    if (!date || !url.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/disclosures", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, label: label.trim(), url: url.trim() }),
+      });
+      if (res.ok) {
+        setLabel("");
+        setUrl("");
+        setShowForm(false);
+        void load();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/disclosures?id=${id}`, { method: "DELETE" });
+    setItems((prev) => prev.filter((i) => i.id !== id));
+  };
+
+  const formatDate = (d: string) => {
+    const dt = new Date(d);
+    return `${dt.getFullYear()}.${String(dt.getMonth() + 1).padStart(2, "0")}.${String(dt.getDate()).padStart(2, "0")}`;
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "200px",
-        color: "var(--color-text-faint)",
-        fontSize: "13px",
-        border: "1px dashed var(--color-border)",
-        borderRadius: "8px",
-      }}
-    >
-      준비 중입니다.
+    <div>
+      {/* 추가 버튼 */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
+        <button
+          onClick={() => {
+            setShowForm((v) => !v);
+            setTimeout(() => urlRef.current?.focus(), 50);
+          }}
+          style={{
+            fontSize: "12px",
+            padding: "4px 12px",
+            background: showForm ? "var(--color-bg-row)" : "#2563eb",
+            color: showForm ? "var(--color-text-muted)" : "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          {showForm ? "취소" : "+ 추가"}
+        </button>
+      </div>
+
+      {/* 입력 폼 */}
+      {showForm && (
+        <div
+          style={{
+            background: "var(--color-bg-subtle)",
+            border: "1px solid var(--color-border)",
+            borderRadius: "8px",
+            padding: "12px",
+            marginBottom: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}
+        >
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                flex: "0 0 auto",
+                padding: "6px 8px",
+                fontSize: "12px",
+                border: "1px solid var(--color-border)",
+                borderRadius: "6px",
+                background: "var(--color-bg-card)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+            <input
+              type="text"
+              placeholder="제목 (선택)"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              style={{
+                flex: 1,
+                padding: "6px 8px",
+                fontSize: "12px",
+                border: "1px solid var(--color-border)",
+                borderRadius: "6px",
+                background: "var(--color-bg-card)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              ref={urlRef}
+              type="url"
+              placeholder="https://..."
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void handleAdd(); }}
+              style={{
+                flex: 1,
+                padding: "6px 8px",
+                fontSize: "12px",
+                border: "1px solid var(--color-border)",
+                borderRadius: "6px",
+                background: "var(--color-bg-card)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+            <button
+              onClick={() => void handleAdd()}
+              disabled={saving || !url.trim()}
+              style={{
+                padding: "6px 14px",
+                fontSize: "12px",
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                cursor: saving || !url.trim() ? "not-allowed" : "pointer",
+                opacity: saving || !url.trim() ? 0.5 : 1,
+                fontWeight: 600,
+              }}
+            >
+              저장
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 목록 */}
+      {loading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                height: "48px",
+                background: "var(--color-bg-row)",
+                borderRadius: "8px",
+                border: "1px solid var(--color-border)",
+                opacity: 1 - i * 0.2,
+              }}
+            />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "160px",
+            color: "var(--color-text-faint)",
+            fontSize: "13px",
+            border: "1px dashed var(--color-border)",
+            borderRadius: "8px",
+          }}
+        >
+          공시를 추가해보세요.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
+          {items.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "10px 12px",
+                background: "var(--color-bg-card)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "8px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: "var(--color-text-faint)",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                {formatDate(item.date)}
+              </span>
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  flex: 1,
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#2563eb",
+                  textDecoration: "none",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.textDecoration = "underline";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.textDecoration = "none";
+                }}
+              >
+                {item.label || item.url}
+              </a>
+              <button
+                onClick={() => void handleDelete(item.id)}
+                style={{
+                  flexShrink: 0,
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--color-text-faint)",
+                  fontSize: "14px",
+                  padding: "0 2px",
+                  lineHeight: 1,
+                }}
+                title="삭제"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
