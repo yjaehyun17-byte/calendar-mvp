@@ -112,6 +112,12 @@ export async function GET() {
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
+  // 유니버스 ticker 목록 조회
+  const { data: universeRows } = await supabase
+    .from("universe")
+    .select("ticker");
+  const universeSet = new Set((universeRows ?? []).map((r: { ticker: string }) => r.ticker));
+
   // Fetch market info and stock prices in parallel
   const items = await Promise.all(
     parsed.map(async (item) => {
@@ -127,7 +133,7 @@ export async function GET() {
         new Date(item.eventDate)
       );
 
-      return { ...item, ...stockData };
+      return { ...item, ...stockData, inUniverse: universeSet.has(item.ticker) };
     })
   );
 

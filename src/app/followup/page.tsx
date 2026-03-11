@@ -17,6 +17,7 @@ type FollowupItem = {
   irName: string;
   irContact: string;
   irAddress: string;
+  inUniverse: boolean;
 };
 
 type SortKey = keyof Pick<FollowupItem, "companyName" | "eventDate" | "daysAgo" | "priceAtEvent" | "currentPrice" | "returnPct">;
@@ -149,7 +150,23 @@ export default function FollowupPage() {
                           onClick={() => setSelectedTicker(item.ticker === selectedTicker ? null : item.ticker)}
                           style={{ padding: "10px 14px", fontWeight: 600, cursor: "pointer", color: selectedTicker === item.ticker ? "#2563eb" : "inherit", textDecoration: selectedTicker === item.ticker ? "underline" : "none" }}
                         >
-                          {item.companyName}
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            {item.companyName}
+                            {item.inUniverse && (
+                              <span style={{
+                                fontSize: "10px",
+                                fontWeight: 600,
+                                color: "#16a34a",
+                                background: "#f0fdf4",
+                                border: "1px solid #bbf7d0",
+                                borderRadius: "4px",
+                                padding: "1px 5px",
+                                whiteSpace: "nowrap",
+                              }}>
+                                팔로업중
+                              </span>
+                            )}
+                          </span>
                         </td>
                         <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>{formatDate(item.eventDate)}</td>
                         <td style={{ padding: "10px 14px", color: "var(--color-text-secondary)" }}>
