@@ -8,6 +8,7 @@ const links = [
   { href: "/followup", label: "팔로업" },
   { href: "/universe", label: "유니버스" },
   { href: "/news", label: "NEWS" },
+  { href: "/valuechain", label: "밸류체인" },
 ];
 
 export default function Nav() {
