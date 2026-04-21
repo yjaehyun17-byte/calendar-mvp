@@ -255,6 +255,7 @@ export default function CalendarPage() {
   );
   const [isCompanyLoading, setIsCompanyLoading] = useState(false);
   const [isCompanySearchFocused, setIsCompanySearchFocused] = useState(false);
+  const [isManualCompanyMode, setIsManualCompanyMode] = useState(false);
   const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary>({
     attending: 0,
     maybe: 0,
@@ -268,7 +269,7 @@ export default function CalendarPage() {
   const calendarEvents = useMemo<EventInput[]>(() => {
     return events.map((event) => ({
       id: event.id,
-      title: event.title.replace(/^\[(탐방|컨콜)\]\s*/, "").replace(/\s*\([A-Z0-9]+\.KRX\)$/, ""),
+      title: event.title.replace(/^\[(탐방|컨콜)\]\s*/, "").replace(/\s*\([A-Z0-9]+\.[A-Z]+\)$/, ""),
       start: event.start,
       end: event.end ?? undefined,
       backgroundColor: event.color,
@@ -299,6 +300,7 @@ export default function CalendarPage() {
     setCompanyQuery("");
     setCompanyResults([]);
     setIsCompanySearchFocused(false);
+    setIsManualCompanyMode(false);
     setAttendanceSummary({ attending: 0, maybe: 0, not_attending: 0 });
     setMyAttendance(null);
     setIsAttendanceLoading(false);
@@ -492,14 +494,20 @@ export default function CalendarPage() {
     const typeMatch = target.title.match(/^\[(탐방|컨콜)\]\s*/);
     const eventType = (typeMatch?.[1] as "탐방" | "컨콜") ?? "탐방";
     const titleWithoutType = target.title.replace(/^\[(탐방|컨콜)\]\s*/, "");
-    const companyMatch = titleWithoutType.match(/^(.+)\s*\(([A-Z0-9]+)\.KRX\)$/) ?? null;
-    const companyName = companyMatch?.[1] ?? "";
-    const companyTicker = companyMatch?.[2] ?? "";
+    const companyMatch = titleWithoutType.match(/^(.+?)\s*\(([A-Z0-9]+)\.([A-Z]+)\)$/) ?? null;
+
+    const parsedName = companyMatch?.[1] ?? "";
+    const parsedTicker = companyMatch?.[2] ?? "";
+    const parsedMarket = companyMatch?.[3] ?? "";
+    const isManual = !companyMatch;
+    const companyName = isManual ? titleWithoutType : parsedName;
+    const companyTicker = isManual ? "" : parsedTicker;
+    const companyMarket = isManual ? "" : parsedMarket;
 
     setForm({
       companyName,
       companyTicker,
-      companyMarket: companyTicker ? "KRX" : "",
+      companyMarket,
       eventType,
       start: toDateTimeLocal(target.start),
       end: toDateTimeLocal(target.end),
@@ -509,7 +517,8 @@ export default function CalendarPage() {
       irContact: target.irContact ?? "",
       irAddress: target.irAddress ?? "",
     });
-    setCompanyQuery(companyName);
+    setCompanyQuery(isManual ? "" : companyName);
+    setIsManualCompanyMode(isManual);
     setIsModalOpen(true);
     void loadAttendance(target.id);
   };
@@ -649,12 +658,16 @@ export default function CalendarPage() {
   const handleSave = async () => {
     const trimmedCompanyName = form.companyName.trim();
     const trimmedCompanyTicker = form.companyTicker.trim();
+    const trimmedCompanyMarket = form.companyMarket.trim();
     const startIso = toIso(form.start);
     const endIso = form.end ? toIso(form.end) : null;
 
-    if (!trimmedCompanyName || !trimmedCompanyTicker || !startIso) return;
+    if (!trimmedCompanyName || !startIso) return;
 
-    const generatedTitle = `[${form.eventType}] ${trimmedCompanyName} (${trimmedCompanyTicker}.KRX)`;
+    const marketForTitle = trimmedCompanyMarket ? trimmedCompanyMarket.toUpperCase() : "KRX";
+    const generatedTitle = trimmedCompanyTicker
+      ? `[${form.eventType}] ${trimmedCompanyName} (${trimmedCompanyTicker}.${marketForTitle})`
+      : `[${form.eventType}] ${trimmedCompanyName}`;
     const generatedNotes = form.notes.trim();
 
     const payload = {
@@ -783,8 +796,7 @@ export default function CalendarPage() {
     );
   }, []);
 
-  const isSaveDisabled =
-    !form.companyName.trim() || !form.companyTicker.trim() || !form.start;
+  const isSaveDisabled = !form.companyName.trim() || !form.start;
 
   return (
     <main className="calendar-page" style={{ padding: "24px" }}>
@@ -986,72 +998,175 @@ export default function CalendarPage() {
               </div>
             </label>
 
-            <label className="calendar-modal-label">
-              상장사 검색 (KOSPI/KOSDAQ) *
-              <input
-                className="calendar-modal-input"
-                type="text"
-                value={companyQuery}
-                onChange={(e) => {
-                  const nextQuery = e.target.value;
-                  setCompanyQuery(nextQuery);
-                  setForm((prev) => ({
-                    ...prev,
-                    companyName: "",
-                    companyTicker: "",
-                    companyMarket: "",
-                  }));
-                }}
-                placeholder={
-                  form.companyName && form.companyTicker
-                    ? `${form.companyName} (${form.companyTicker}, ${form.companyMarket})`
-                    : "예: 삼성전자, 카카오"
-                }
-                style={{ width: "100%", padding: "8px", marginTop: "4px" }}
-                onFocus={() => setIsCompanySearchFocused(true)}
-                onBlur={() => setTimeout(() => setIsCompanySearchFocused(false), 150)}
-              />
-            </label>
+            {!isManualCompanyMode ? (
+              <>
+                <label className="calendar-modal-label">
+                  상장사 검색 (KOSPI/KOSDAQ) *
+                  <input
+                    className="calendar-modal-input"
+                    type="text"
+                    value={companyQuery}
+                    onChange={(e) => {
+                      const nextQuery = e.target.value;
+                      setCompanyQuery(nextQuery);
+                      setForm((prev) => ({
+                        ...prev,
+                        companyName: "",
+                        companyTicker: "",
+                        companyMarket: "",
+                      }));
+                    }}
+                    placeholder={
+                      form.companyName && form.companyTicker
+                        ? `${form.companyName} (${form.companyTicker}, ${form.companyMarket})`
+                        : "예: 삼성전자, 카카오"
+                    }
+                    style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+                    onFocus={() => setIsCompanySearchFocused(true)}
+                    onBlur={() => setTimeout(() => setIsCompanySearchFocused(false), 150)}
+                  />
+                </label>
 
-            {isCompanyLoading ? <p style={{ margin: 0 }}>기업 검색 중...</p> : null}
+                {isCompanyLoading ? <p style={{ margin: 0 }}>기업 검색 중...</p> : null}
 
-            {companyResults.length > 0 ? (
-              <div
-                style={{
-                  border: "1px solid #d1d5db",
-                  borderRadius: "8px",
-                  maxHeight: "160px",
-                  overflowY: "auto",
-                }}
-              >
-                {companyResults.map((company) => (
-                  <button
-                    key={`${company.market}-${company.ticker}`}
-                    type="button"
-                    onClick={() => handleSelectCompany(company)}
+                {companyResults.length > 0 ? (
+                  <div
                     style={{
-                      width: "100%",
-                      textAlign: "left",
-                      border: "none",
-                      background: "#fff",
-                      padding: "8px 10px",
-                      cursor: "pointer",
-                      borderBottom: "1px solid #e5e7eb",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "8px",
+                      maxHeight: "160px",
+                      overflowY: "auto",
                     }}
                   >
-                    {company.name_kr} ({company.ticker}, {company.market ?? "KRX"})
-                  </button>
-                ))}
-              </div>
-            ) : null}
+                    {companyResults.map((company) => (
+                      <button
+                        key={`${company.market}-${company.ticker}`}
+                        type="button"
+                        onClick={() => handleSelectCompany(company)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          border: "none",
+                          background: "#fff",
+                          padding: "8px 10px",
+                          cursor: "pointer",
+                          borderBottom: "1px solid #e5e7eb",
+                        }}
+                      >
+                        {company.name_kr} ({company.ticker}, {company.market ?? "KRX"})
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
 
-            {!isCompanyLoading &&
-            companyQuery.trim().length >= 2 &&
-            companyResults.length === 0 ? (
-              <p style={{ margin: 0, color: "#6b7280", fontSize: "13px" }}>
-                검색 결과가 없습니다. 회사명을 더 정확히 입력해 주세요.
-              </p>
-            ) : null}
+                {!isCompanyLoading &&
+                companyQuery.trim().length >= 2 &&
+                companyResults.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsManualCompanyMode(true);
+                      setForm((prev) => ({ ...prev, companyName: companyQuery.trim() }));
+                    }}
+                    style={{
+                      alignSelf: "flex-start",
+                      border: "1px solid #f59e0b",
+                      background: "#fffbeb",
+                      color: "#92400e",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      fontSize: "13px",
+                      textAlign: "left",
+                    }}
+                  >
+                    검색 결과가 없습니다. 직접 입력하기 →
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              <section
+                style={{
+                  border: "1px solid #f59e0b",
+                  background: "#fffbeb",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  display: "grid",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "14px", color: "#92400e" }}>직접 입력</strong>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsManualCompanyMode(false);
+                      setForm((prev) => ({
+                        ...prev,
+                        companyName: "",
+                        companyTicker: "",
+                        companyMarket: "",
+                      }));
+                      setCompanyQuery("");
+                    }}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "#2563eb",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      textDecoration: "underline",
+                      padding: 0,
+                    }}
+                  >
+                    ← 검색으로 돌아가기
+                  </button>
+                </div>
+                <label className="calendar-modal-label">
+                  회사명 *
+                  <input
+                    className="calendar-modal-input"
+                    type="text"
+                    value={form.companyName}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, companyName: e.target.value }))
+                    }
+                    placeholder="예: OpenAI"
+                    style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+                  />
+                </label>
+                <label className="calendar-modal-label">
+                  티커
+                  <input
+                    className="calendar-modal-input"
+                    type="text"
+                    value={form.companyTicker}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        companyTicker: e.target.value.toUpperCase(),
+                      }))
+                    }
+                    placeholder="예: NVDA"
+                    style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+                  />
+                </label>
+                <label className="calendar-modal-label">
+                  마켓
+                  <input
+                    className="calendar-modal-input"
+                    type="text"
+                    value={form.companyMarket}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, companyMarket: e.target.value }))
+                    }
+                    placeholder="예: NASDAQ, NYSE, 비상장"
+                    style={{ width: "100%", padding: "8px", marginTop: "4px" }}
+                  />
+                </label>
+              </section>
+            )}
 
             <label className="calendar-modal-label">
               시작
